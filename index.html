@@ -2,1862 +2,1825 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta name="theme-color" content="#1a2744">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="공사일보">
-<title>공사일보 관리 시스템</title>
-
-<!-- SheetJS for Excel -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
+<title>공사일보</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Bebas+Neue&display=swap');
-
-  :root {
-    --navy: #1a2744;
-    --navy-light: #243660;
-    --orange: #f5851f;
-    --orange-light: #ff9a3c;
-    --gray-bg: #f0f2f7;
-    --gray-card: #ffffff;
-    --gray-border: #d8dde8;
-    --gray-text: #6b7694;
-    --text-main: #1a2744;
-    --text-sub: #4a5568;
-    --shadow: 0 4px 20px rgba(26,39,68,0.12);
-    --shadow-lg: 0 8px 40px rgba(26,39,68,0.18);
-    --radius: 14px;
-    --radius-sm: 8px;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-  body {
-    font-family: 'Noto Sans KR', sans-serif;
-    background: var(--gray-bg);
-    color: var(--text-main);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── HEADER ── */
-  .app-header {
-    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
-    color: white;
-    padding: 0;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.3);
-  }
-
-  .header-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 18px;
-  }
-
-  .header-logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .logo-icon {
-    width: 38px; height: 38px;
-    background: var(--orange);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px;
-  }
-
-  .logo-text {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 22px;
-    letter-spacing: 2px;
-    line-height: 1;
-  }
-
-  .logo-sub {
-    font-size: 10px;
-    opacity: 0.65;
-    letter-spacing: 1px;
-  }
-
-  .header-date {
-    text-align: right;
-    font-size: 11px;
-    opacity: 0.75;
-    line-height: 1.6;
-  }
-
-  /* ── NAV TABS ── */
-  .nav-tabs {
-    display: flex;
-    background: rgba(255,255,255,0.07);
-    border-top: 1px solid rgba(255,255,255,0.1);
-  }
-
-  .nav-tab {
-    flex: 1;
-    padding: 10px 6px;
-    text-align: center;
-    font-size: 11px;
-    font-weight: 500;
-    color: rgba(255,255,255,0.55);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s;
-    letter-spacing: 0.5px;
-  }
-
-  .nav-tab.active {
-    color: var(--orange);
-    border-bottom-color: var(--orange);
-    background: rgba(245,133,31,0.08);
-  }
-
-  .nav-tab-icon { display: block; font-size: 16px; margin-bottom: 2px; }
-
-  /* ── PAGE SECTIONS ── */
-  .page { display: none; padding: 16px; padding-bottom: 30px; }
-  .page.active { display: block; }
-
-  /* ── SECTION CARD ── */
-  .section-card {
-    background: white;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    margin-bottom: 16px;
-    overflow: hidden;
-  }
-
-  .section-header {
-    background: linear-gradient(90deg, var(--navy) 0%, var(--navy-light) 100%);
-    color: white;
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-  }
-
-  .section-header-icon { font-size: 16px; }
-
-  .section-body { padding: 16px; }
-
-  /* ── FORM ELEMENTS ── */
-  .form-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-
-  .form-group {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .form-group.full { flex: none; width: 100%; }
-
-  label {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--navy);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
-
-  input[type="text"], input[type="number"], input[type="date"],
-  select, textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1.5px solid var(--gray-border);
-    border-radius: var(--radius-sm);
-    font-size: 14px;
-    font-family: 'Noto Sans KR', sans-serif;
-    color: var(--text-main);
-    background: #f8f9fc;
-    transition: all 0.2s;
-    -webkit-appearance: none;
-    appearance: none;
-  }
-
-  input:focus, select:focus, textarea:focus {
-    outline: none;
-    border-color: var(--orange);
-    background: white;
-    box-shadow: 0 0 0 3px rgba(245,133,31,0.12);
-  }
-
-  select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231a2744' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    padding-right: 32px;
-  }
-
-  textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
-
-  /* ── WEATHER BUTTONS ── */
-  .weather-btns {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .weather-btn {
-    padding: 8px 14px;
-    border: 1.5px solid var(--gray-border);
-    border-radius: 20px;
-    background: white;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: 'Noto Sans KR', sans-serif;
-  }
-
-  .weather-btn.active {
-    background: var(--navy);
-    border-color: var(--navy);
-    color: white;
-  }
-
-  /* ── WORKER TABLE ── */
-  .worker-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-
-  .worker-table th {
-    background: var(--navy);
-    color: white;
-    padding: 9px 10px;
-    text-align: center;
-    font-weight: 600;
-    font-size: 12px;
-  }
-
-  .worker-table td {
-    padding: 8px 8px;
-    border-bottom: 1px solid #eef0f6;
-    text-align: center;
-    vertical-align: middle;
-  }
-
-  .worker-table tr:last-child td { border-bottom: none; }
-  .worker-table tr:nth-child(even) td { background: #f8f9fc; }
-
-  .worker-table td input {
-    width: 100%;
-    padding: 6px 8px;
-    text-align: center;
-    border: 1px solid var(--gray-border);
-    border-radius: 6px;
-    font-size: 13px;
-    background: white;
-  }
-
-  .worker-total {
-    background: linear-gradient(90deg, #f0f4ff, #e8f0fe) !important;
-    font-weight: 700;
-    color: var(--navy);
-  }
-
-  /* ── EQUIPMENT TABLE ── */
-  .equip-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #eef0f6;
-  }
-
-  .equip-row:last-child { border-bottom: none; }
-
-  .equip-idx {
-    width: 24px;
-    height: 24px;
-    background: var(--navy);
-    color: white;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  /* ── ADD / REMOVE BUTTONS ── */
-  .btn-add {
-    width: 100%;
-    padding: 10px;
-    background: white;
-    border: 2px dashed var(--orange);
-    border-radius: var(--radius-sm);
-    color: var(--orange);
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: 'Noto Sans KR', sans-serif;
-    letter-spacing: 0.5px;
-  }
-
-  .btn-add:hover { background: #fff5eb; }
-
-  .btn-remove {
-    padding: 5px 8px;
-    background: #fee2e2;
-    border: none;
-    border-radius: 6px;
-    color: #dc2626;
-    cursor: pointer;
-    font-size: 14px;
-    flex-shrink: 0;
-  }
-
-  /* ── PROGRESS BAR ── */
-  .progress-wrap {
-    position: relative;
-    margin-top: 6px;
-  }
-
-  .progress-bar-bg {
-    height: 12px;
-    background: #e8eaf6;
-    border-radius: 6px;
-    overflow: hidden;
-    margin-top: 8px;
-  }
-
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--orange), #ffb347);
-    border-radius: 6px;
-    transition: width 0.4s ease;
-  }
-
-  /* ── PHOTO UPLOAD ── */
-  .photo-upload-area {
-    border: 2px dashed var(--orange);
-    border-radius: var(--radius);
-    padding: 30px 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: #fff9f4;
-    position: relative;
-  }
-
-  .photo-upload-area:hover { background: #fff4ec; }
-  .photo-upload-area input[type="file"] {
-    position: absolute; inset: 0; opacity: 0; cursor: pointer;
-    width: 100%; height: 100%;
-  }
-
-  .photo-upload-icon { font-size: 36px; display: block; margin-bottom: 8px; }
-  .photo-upload-text { font-size: 14px; color: var(--orange); font-weight: 700; }
-  .photo-upload-sub { font-size: 11px; color: var(--gray-text); margin-top: 4px; }
-
-  /* ── PHOTO GRID ── */
-  .photo-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-top: 14px;
-  }
-
-  .photo-item {
-    position: relative;
-    aspect-ratio: 1;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: var(--shadow);
-  }
-
-  .photo-item img {
-    width: 100%; height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
-  .photo-item-del {
-    position: absolute;
-    top: 4px; right: 4px;
-    width: 22px; height: 22px;
-    background: rgba(220,38,38,0.85);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    font-size: 13px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    line-height: 1;
-  }
-
-  .photo-caption-input {
-    width: 100%;
-    padding: 4px 6px;
-    font-size: 10px;
-    border: none;
-    background: rgba(0,0,0,0.6);
-    color: white;
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    font-family: 'Noto Sans KR', sans-serif;
-  }
-
-  .photo-caption-input::placeholder { color: rgba(255,255,255,0.6); }
-
-  /* ── CUMULATIVE ── */
-  .cumul-card {
-    background: linear-gradient(135deg, var(--navy), var(--navy-light));
-    border-radius: var(--radius);
-    padding: 16px;
-    color: white;
-    margin-bottom: 12px;
-  }
-
-  .cumul-label { font-size: 11px; opacity: 0.7; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
-  .cumul-value { font-family: 'Bebas Neue', cursive; font-size: 42px; letter-spacing: 2px; line-height: 1; }
-  .cumul-unit { font-size: 14px; opacity: 0.7; margin-left: 4px; }
-
-  .cumul-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-
-  .cumul-mini {
-    background: white;
-    border-radius: 10px;
-    padding: 12px;
-    text-align: center;
-    box-shadow: var(--shadow);
-  }
-
-  .cumul-mini-label { font-size: 11px; color: var(--gray-text); margin-bottom: 4px; }
-  .cumul-mini-val { font-size: 22px; font-weight: 900; color: var(--navy); }
-  .cumul-mini-unit { font-size: 11px; color: var(--gray-text); }
-
-  /* ── HISTORY LIST ── */
-  .history-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: var(--shadow);
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .history-item:hover { transform: translateX(3px); box-shadow: var(--shadow-lg); }
-
-  .history-date-badge {
-    background: var(--navy);
-    color: white;
-    border-radius: 8px;
-    padding: 6px 10px;
-    text-align: center;
-    min-width: 50px;
-    flex-shrink: 0;
-  }
-
-  .history-date-day { font-size: 20px; font-weight: 900; line-height: 1; }
-  .history-date-mon { font-size: 10px; opacity: 0.7; }
-
-  .history-info { flex: 1; }
-  .history-title { font-size: 13px; font-weight: 700; color: var(--navy); }
-  .history-sub { font-size: 11px; color: var(--gray-text); margin-top: 2px; }
-
-  .history-progress {
-    font-size: 16px;
-    font-weight: 900;
-    color: var(--orange);
-    flex-shrink: 0;
-  }
-
-  /* ── ACTION BUTTONS ── */
-  .action-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-
-  .action-btn {
-    padding: 14px 12px;
-    border: none;
-    border-radius: var(--radius);
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s;
-    font-family: 'Noto Sans KR', sans-serif;
-    letter-spacing: 0.3px;
-    box-shadow: var(--shadow);
-  }
-
-  .action-btn-icon { font-size: 22px; }
-
-  .btn-excel {
-    background: linear-gradient(135deg, #1a6b35, #217a3e);
-    color: white;
-  }
-
-  .btn-kakao {
-    background: linear-gradient(135deg, #f7e01d, #f5c800);
-    color: #3a2a00;
-  }
-
-  .btn-email {
-    background: linear-gradient(135deg, #1a56db, #1d4ed8);
-    color: white;
-  }
-
-  .btn-save {
-    background: linear-gradient(135deg, var(--orange), var(--orange-light));
-    color: white;
-    grid-column: span 2;
-    flex-direction: row;
-    padding: 16px;
-    font-size: 15px;
-  }
-
-  .action-btn:active { transform: scale(0.97); }
-
-  /* ── WORK ITEMS ── */
-  .work-item {
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-    margin-bottom: 10px;
-  }
-
-  .work-item-num {
-    width: 26px; height: 26px;
-    background: var(--orange);
-    color: white;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-    flex-shrink: 0;
-    margin-top: 8px;
-  }
-
-  /* ── TOAST ── */
-  .toast {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: rgba(26,39,68,0.95);
-    color: white;
-    padding: 12px 22px;
-    border-radius: 30px;
-    font-size: 13px;
-    font-weight: 500;
-    z-index: 9999;
-    transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
-    white-space: nowrap;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-  }
-
-  .toast.show { transform: translateX(-50%) translateY(0); }
-
-  /* ── MODAL ── */
-  .modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 200;
-    display: none;
-    align-items: flex-end;
-  }
-
-  .modal-overlay.active { display: flex; }
-
-  .modal-sheet {
-    width: 100%;
-    background: white;
-    border-radius: 20px 20px 0 0;
-    padding: 20px;
-    max-height: 80vh;
-    overflow-y: auto;
-    animation: slideUp 0.3s ease;
-  }
-
-  @keyframes slideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
-  }
-
-  .modal-handle {
-    width: 40px; height: 4px;
-    background: #ddd;
-    border-radius: 2px;
-    margin: 0 auto 16px;
-  }
-
-  .modal-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--navy);
-    margin-bottom: 16px;
-  }
-
-  /* ── SUMMARY BADGE ── */
-  .summary-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #f0f0f0;
-    font-size: 13px;
-  }
-
-  .summary-row:last-child { border-bottom: none; }
-  .summary-label { color: var(--gray-text); }
-  .summary-value { font-weight: 700; color: var(--navy); }
-
-  /* ── INSTALL BANNER ── */
-  .install-banner {
-    background: linear-gradient(90deg, var(--orange), var(--orange-light));
-    color: white;
-    padding: 10px 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 12px;
-    cursor: pointer;
-    display: none;
-  }
-
-  .install-banner.show { display: flex; }
-  .install-banner-text { font-weight: 600; }
-  .install-banner-btn { background: white; color: var(--orange); padding: 5px 12px; border-radius: 15px; font-weight: 700; font-size: 11px; }
-
-  /* ── PROJECT INFO ── */
-  .project-meta {
-    background: linear-gradient(135deg, #0f172a, var(--navy));
-    color: white;
-    border-radius: var(--radius);
-    padding: 16px;
-    margin-bottom: 16px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .project-meta::before {
-    content: '';
-    position: absolute;
-    right: -20px; top: -20px;
-    width: 100px; height: 100px;
-    border-radius: 50%;
-    background: rgba(245,133,31,0.15);
-  }
-
-  .project-meta-title { font-size: 10px; opacity: 0.6; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
-  .project-name { font-size: 18px; font-weight: 900; }
-  .project-detail { font-size: 11px; opacity: 0.65; margin-top: 6px; }
-
-  /* ── SPECIAL ORANGE ACCENT ── */
-  .accent { color: var(--orange); }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 360px) {
-    .action-grid { grid-template-columns: 1fr; }
-    .btn-save { grid-column: 1; }
-  }
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Bebas+Neue&display=swap');
+
+:root {
+  --navy:#1a2744; --navy2:#243660; --orange:#f5851f; --orange2:#ff9a3c;
+  --bg:#f0f2f7; --white:#fff; --border:#d8dde8; --gray:#6b7694;
+  --shadow:0 4px 20px rgba(26,39,68,.12); --r:14px; --r2:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh;overflow-x:hidden}
+
+/* ── SCREEN SYSTEM ── */
+.screen{display:none}
+.screen.on{display:block}
+
+/* ── HEADER ── */
+.hdr{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,.25)}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+.hdr-logo{display:flex;align-items:center;gap:10px}
+.hdr-icon{width:36px;height:36px;background:var(--orange);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.hdr-title{font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:2px;line-height:1}
+.hdr-sub{font-size:10px;opacity:.6;letter-spacing:.5px}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.hdr-date{text-align:right;font-size:10px;opacity:.65;line-height:1.6}
+.home-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+
+/* ── TABS ── */
+.tabs{display:flex;background:rgba(255,255,255,.07);border-top:1px solid rgba(255,255,255,.1)}
+.tab{flex:1;padding:9px 4px;text-align:center;font-size:10px;font-weight:500;color:rgba(255,255,255,.5);cursor:pointer;border-bottom:2px solid transparent;transition:.2s;letter-spacing:.3px}
+.tab.on{color:var(--orange);border-bottom-color:var(--orange);background:rgba(245,133,31,.08)}
+.tab-ic{display:block;font-size:15px;margin-bottom:1px}
+
+/* ── PAGE ── */
+.page{display:none;padding:14px;padding-bottom:32px}
+.page.on{display:block}
+
+/* ── CARD ── */
+.card{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+.card-hdr{background:linear-gradient(90deg,var(--navy),var(--navy2));color:#fff;padding:11px 15px;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;letter-spacing:.3px}
+.card-body{padding:14px}
+
+/* ── FORM ── */
+.row{display:flex;gap:10px;margin-bottom:11px}
+.row:last-child{margin-bottom:0}
+.fg{flex:1;display:flex;flex-direction:column;gap:4px}
+label{font-size:11px;font-weight:700;color:var(--navy);letter-spacing:.4px;text-transform:uppercase}
+input[type=text],input[type=number],input[type=date],select,textarea{
+  width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--r2);
+  font-size:13px;font-family:inherit;color:var(--navy);background:#f8f9fc;transition:.2s;
+  -webkit-appearance:none;appearance:none}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--orange);background:#fff;box-shadow:0 0 0 3px rgba(245,133,31,.1)}
+textarea{resize:vertical;min-height:72px;line-height:1.6}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231a2744' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
+
+/* ── WEATHER BTN ── */
+.w-btns{display:flex;gap:7px;flex-wrap:wrap}
+.w-btn{padding:7px 12px;border:1.5px solid var(--border);border-radius:20px;background:#fff;font-size:12px;cursor:pointer;transition:.2s;font-family:inherit}
+.w-btn.on{background:var(--navy);border-color:var(--navy);color:#fff}
+
+/* ── WORKER TABLE ── */
+.wtbl{width:100%;border-collapse:collapse;font-size:12px}
+.wtbl th{background:var(--navy);color:#fff;padding:8px 6px;text-align:center;font-weight:600;font-size:11px}
+.wtbl td{padding:6px 5px;border-bottom:1px solid #eef0f6;text-align:center;vertical-align:middle}
+.wtbl tr:nth-child(even) td{background:#f8f9fc}
+.wtbl td input{width:100%;padding:5px 6px;text-align:center;border:1px solid var(--border);border-radius:5px;font-size:12px;background:#fff;font-family:inherit}
+.wtbl tfoot td{background:linear-gradient(90deg,#f0f4ff,#e8f0fe);font-weight:700;color:var(--navy)}
+
+/* ── EQUIP / MATERIAL ROW ── */
+.erow{display:flex;gap:7px;align-items:center;padding:8px 0;border-bottom:1px solid #eef0f6}
+.erow:last-child{border-bottom:none}
+.enum{width:22px;height:22px;background:var(--navy);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.rm-btn{padding:4px 7px;background:#fee2e2;border:none;border-radius:5px;color:#dc2626;cursor:pointer;font-size:12px;flex-shrink:0}
+
+/* ── WORK ITEM ── */
+.witem{display:flex;gap:8px;align-items:flex-start;margin-bottom:9px}
+.wnum{width:24px;height:24px;background:var(--orange);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:7px}
+
+/* ── ADD BTN ── */
+.add-btn{width:100%;padding:9px;background:#fff;border:2px dashed var(--orange);border-radius:var(--r2);color:var(--orange);font-size:12px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit;letter-spacing:.3px;margin-top:8px}
+.add-btn:hover{background:#fff5eb}
+
+/* ── PROGRESS ── */
+.prg-bg{height:11px;background:#e8eaf6;border-radius:6px;overflow:hidden;margin-top:7px}
+.prg-fill{height:100%;background:linear-gradient(90deg,var(--orange),#ffb347);border-radius:6px;transition:width .4s}
+
+/* ── PHOTO ── */
+.photo-btns{display:flex;gap:10px;margin-bottom:12px}
+.pup-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 8px;border-radius:var(--r);min-height:90px;cursor:pointer;transition:.18s}
+.pup-btn:active{transform:scale(.96)}
+.pup-cam{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;box-shadow:var(--shadow)}
+.pup-gal{background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;box-shadow:var(--shadow)}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.pitem{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.pitem img{width:100%;height:100%;object-fit:cover;display:block}
+.pcap{width:100%;padding:3px 6px;font-size:9px;border:none;background:rgba(0,0,0,.55);color:#fff;position:absolute;bottom:0;font-family:inherit}
+.pcap::placeholder{color:rgba(255,255,255,.55)}
+.pdel{position:absolute;top:3px;right:3px;width:20px;height:20px;background:rgba(220,38,38,.85);color:#fff;border:none;border-radius:50%;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.pempty{text-align:center;padding:28px 0;color:var(--gray)}
+
+/* ── CUMUL CARD ── */
+.cumul-hero{background:linear-gradient(135deg,#0f172a,var(--navy));color:#fff;border-radius:var(--r);padding:16px;margin-bottom:14px}
+.ch-val{font-family:'Bebas Neue',cursive;font-size:44px;letter-spacing:2px;line-height:1}
+.ch-unit{font-size:14px;opacity:.7;margin-left:4px}
+.ch-label{font-size:10px;opacity:.6;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
+.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.mini{background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:var(--shadow)}
+.mini-label{font-size:10px;color:var(--gray);margin-bottom:3px}
+.mini-val{font-size:22px;font-weight:900;color:var(--navy)}
+.mini-unit{font-size:10px;color:var(--gray)}
+
+/* ── SUMMARY ROW ── */
+.srow{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:12px}
+.srow:last-child{border-bottom:none}
+.slabel{color:var(--gray)}
+.sval{font-weight:700;color:var(--navy)}
+
+/* ── ACTION BTNS ── */
+.act-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.act-btn{padding:13px 10px;border:none;border-radius:var(--r);font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:.2s;font-family:inherit;box-shadow:var(--shadow)}
+.act-btn:active{transform:scale(.96)}
+.act-ic{font-size:20px}
+.btn-xl{background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;grid-column:span 2;flex-direction:row;padding:15px;font-size:14px}
+
+/* ── HISTORY ── */
+.hist-item{display:flex;align-items:center;gap:11px;padding:12px;background:#fff;border-radius:10px;box-shadow:var(--shadow);margin-bottom:8px;cursor:pointer;transition:.2s}
+.hist-item:active{transform:translateX(3px)}
+.hist-badge{background:var(--navy);color:#fff;border-radius:8px;padding:5px 9px;text-align:center;min-width:46px;flex-shrink:0}
+.hist-day{font-size:19px;font-weight:900;line-height:1}
+.hist-mon{font-size:9px;opacity:.65}
+.hist-info{flex:1}
+.hist-title{font-size:12px;font-weight:700;color:var(--navy)}
+.hist-sub{font-size:10px;color:var(--gray);margin-top:2px}
+.hist-pct{font-size:15px;font-weight:900;color:var(--orange);flex-shrink:0}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end}
+.overlay.on{display:flex}
+.msheet{width:100%;background:#fff;border-radius:20px 20px 0 0;padding:18px;max-height:82vh;overflow-y:auto;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.mhandle{width:38px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 14px}
+.mtitle{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:14px}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(26,39,68,.95);color:#fff;padding:11px 20px;border-radius:30px;font-size:12px;font-weight:500;z-index:9999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.toast.on{transform:translateX(-50%) translateY(0)}
+
+/* ── HOME ── */
+.home-hdr{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:22px 16px 18px}
+.home-dash{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.dash-mini{background:#fff;border-radius:12px;padding:11px 8px;text-align:center;box-shadow:var(--shadow)}
+.dash-val{font-size:22px;font-weight:900;color:var(--navy)}
+.dash-lbl{font-size:9px;color:var(--gray);margin-top:2px}
+.site-card{background:#fff;border-radius:var(--r);padding:15px 15px 15px 19px;margin-bottom:10px;box-shadow:var(--shadow);position:relative;overflow:hidden;cursor:pointer}
+.site-accent{position:absolute;left:0;top:0;width:5px;height:100%;background:var(--orange);border-radius:4px 0 0 4px}
+.site-name{font-size:15px;font-weight:900;color:var(--navy);margin-bottom:2px}
+.site-sub{font-size:10px;color:var(--gray);margin-bottom:8px}
+.site-stats{display:flex;gap:12px;font-size:10px;color:var(--gray);margin-bottom:9px}
+.site-prg-bg{height:7px;background:#e8eaf6;border-radius:4px;overflow:hidden;margin-bottom:6px}
+.site-prg-fill{height:100%;background:linear-gradient(90deg,var(--orange),#ffb347);border-radius:4px;transition:width .4s}
+.site-bottom{display:flex;justify-content:space-between;align-items:center}
+.enter-btn{background:var(--navy);color:#fff;border:none;border-radius:18px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.icon-btn{border:none;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer}
+
+/* ── INSTALL BANNER ── */
+.install-bar{background:linear-gradient(90deg,var(--orange),var(--orange2));color:#fff;padding:9px 14px;display:none;align-items:center;justify-content:space-between;font-size:11px}
+.install-bar.on{display:flex}
+.install-bar-btn{background:#fff;color:var(--orange);padding:4px 11px;border-radius:14px;font-weight:700;font-size:10px;cursor:pointer}
+
+/* ── PROJECT META ── */
+.proj-meta{background:linear-gradient(135deg,#0f172a,var(--navy));color:#fff;border-radius:var(--r);padding:14px;margin-bottom:14px;position:relative;overflow:hidden;cursor:pointer}
+.proj-meta::before{content:'';position:absolute;right:-15px;top:-15px;width:80px;height:80px;border-radius:50%;background:rgba(245,133,31,.15)}
+.proj-label{font-size:9px;opacity:.6;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
+.proj-name{font-size:17px;font-weight:900}
+.proj-detail{font-size:10px;opacity:.6;margin-top:5px}
+
+/* detail table shared */
+.dtbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px}
+.dtbl th{background:var(--navy);color:#fff;padding:6px 7px;text-align:left;font-weight:600}
+.dtbl th:not(:first-child){text-align:center}
+.dtbl td{padding:6px 7px;border-bottom:1px solid #eef0f6}
+.dtbl td:not(:first-child){text-align:center}
+.dtbl tr:nth-child(even) td{background:#f8f9fc}
+.dtbl .total-row td{background:linear-gradient(90deg,#f0f4ff,#e8f0fe);font-weight:700;color:var(--navy)}
 </style>
 </head>
 <body>
 
 <!-- INSTALL BANNER -->
-<div class="install-banner" id="installBanner">
-  <div>
-    <div class="install-banner-text">📲 홈 화면에 추가하여 앱처럼 사용하세요!</div>
-  </div>
-  <div class="install-banner-btn" id="installBtn">설치</div>
+<div class="install-bar" id="installBar">
+  <div>📲 홈 화면에 추가하여 앱처럼 사용하세요!</div>
+  <div class="install-bar-btn" id="installBtn">설치</div>
 </div>
 
-<!-- HEADER -->
-<header class="app-header">
-  <div class="header-inner">
-    <div class="header-logo">
-      <div class="logo-icon">🏗</div>
+<!-- ============================= HOME SCREEN ============================= -->
+<div class="screen on" id="scHome">
+  <div class="home-hdr">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <div class="hdr-icon">🏗</div>
       <div>
-        <div class="logo-text">공사일보</div>
-        <div class="logo-sub">DAILY CONSTRUCTION REPORT</div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:2px">공사일보</div>
+        <div style="font-size:9px;opacity:.6;letter-spacing:1px">DAILY CONSTRUCTION REPORT</div>
       </div>
     </div>
-    <div class="header-date" id="headerDate"></div>
-  </div>
-  <nav class="nav-tabs">
-    <div class="nav-tab active" onclick="goTab('write')">
-      <span class="nav-tab-icon">📝</span>작성
-    </div>
-    <div class="nav-tab" onclick="goTab('photos')">
-      <span class="nav-tab-icon">📷</span>사진대지
-    </div>
-    <div class="nav-tab" onclick="goTab('cumul')">
-      <span class="nav-tab-icon">📊</span>누계
-    </div>
-    <div class="nav-tab" onclick="goTab('history')">
-      <span class="nav-tab-icon">📋</span>이력
-    </div>
-    <div class="nav-tab" onclick="goTab('send')">
-      <span class="nav-tab-icon">📤</span>전송
-    </div>
-  </nav>
-</header>
-
-<!-- ============================== TAB: 작성 ============================== -->
-<section class="page active" id="tab-write">
-
-  <!-- 프로젝트 정보 -->
-  <div class="project-meta" id="projectMeta" onclick="openProjectModal()">
-    <div class="project-meta-title">현장명 (탭하여 수정)</div>
-    <div class="project-name" id="metaProjectName">현장명을 입력하세요</div>
-    <div class="project-detail" id="metaProjectDetail">공사명 · 감독관</div>
+    <div id="homeDateTxt" style="font-size:11px;opacity:.65;margin-top:4px"></div>
   </div>
 
-  <!-- 기본 정보 -->
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">📅</span> 기본 정보
+  <div style="padding:14px">
+    <!-- 대시보드 -->
+    <div class="home-dash">
+      <div class="dash-mini"><div class="dash-val" id="dSites">0</div><div class="dash-lbl">현장 수</div></div>
+      <div class="dash-mini"><div class="dash-val" style="color:var(--orange)" id="dReports">0</div><div class="dash-lbl">총 일보</div></div>
+      <div class="dash-mini"><div class="dash-val" id="dWorkers">0</div><div class="dash-lbl">누계인원</div></div>
     </div>
-    <div class="section-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label>작성일</label>
-          <input type="date" id="reportDate">
-        </div>
-        <div class="form-group">
-          <label>공사일보 No.</label>
-          <input type="text" id="reportNo" placeholder="예) 001">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>작성자</label>
-          <input type="text" id="author" placeholder="성명">
-        </div>
-        <div class="form-group">
-          <label>직위</label>
-          <input type="text" id="authorTitle" placeholder="직위">
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- 날씨 / 기온 -->
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">🌤</span> 날씨 / 기온
+    <!-- 현장 목록 헤더 -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:14px;font-weight:700;color:var(--navy)">📋 현장 목록</div>
+      <button onclick="openSiteModal()" style="background:var(--orange);color:#fff;border:none;border-radius:18px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">+ 현장 추가</button>
     </div>
-    <div class="section-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label>오전 날씨</label>
-          <div class="weather-btns" id="weatherAM">
-            <button class="weather-btn" onclick="selWeather(this,'AM')">☀️ 맑음</button>
-            <button class="weather-btn" onclick="selWeather(this,'AM')">⛅ 구름</button>
-            <button class="weather-btn" onclick="selWeather(this,'AM')">🌧 비</button>
-            <button class="weather-btn" onclick="selWeather(this,'AM')">❄️ 눈</button>
-          </div>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>오후 날씨</label>
-          <div class="weather-btns" id="weatherPM">
-            <button class="weather-btn" onclick="selWeather(this,'PM')">☀️ 맑음</button>
-            <button class="weather-btn" onclick="selWeather(this,'PM')">⛅ 구름</button>
-            <button class="weather-btn" onclick="selWeather(this,'PM')">🌧 비</button>
-            <button class="weather-btn" onclick="selWeather(this,'PM')">❄️ 눈</button>
-          </div>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>최저기온 (°C)</label>
-          <input type="number" id="tempMin" placeholder="예) 12">
-        </div>
-        <div class="form-group">
-          <label>최고기온 (°C)</label>
-          <input type="number" id="tempMax" placeholder="예) 28">
-        </div>
-      </div>
+    <div id="siteList"></div>
+    <div id="siteEmpty" style="text-align:center;padding:40px 0;color:var(--gray);display:none">
+      <div style="font-size:44px;margin-bottom:10px">🏗</div>
+      <div style="font-size:14px;font-weight:700;color:var(--navy)">등록된 현장이 없습니다</div>
+      <div style="font-size:11px;margin-top:5px">위 버튼으로 현장을 추가하세요</div>
     </div>
-  </div>
-
-  <!-- 작업인원 -->
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">👷</span> 작업인원 (직종별)
-    </div>
-    <div class="section-body">
-      <table class="worker-table" id="workerTable">
-        <thead>
-          <tr>
-            <th>직종</th>
-            <th>기술자</th>
-            <th>기능공</th>
-            <th>보통인부</th>
-            <th>소계</th>
-          </tr>
-        </thead>
-        <tbody id="workerBody">
-          <!-- rows injected by JS -->
-        </tbody>
-        <tfoot>
-          <tr class="worker-total">
-            <td><strong>합계</strong></td>
-            <td id="totalSkill">0</td>
-            <td id="totalTech">0</td>
-            <td id="totalLabor">0</td>
-            <td id="totalAll">0</td>
-          </tr>
-        </tfoot>
-      </table>
-      <div style="margin-top:10px">
-        <button class="btn-add" onclick="addWorkerRow()">+ 직종 추가</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 장비 투입 -->
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">🚜</span> 장비 투입 현황
-    </div>
-    <div class="section-body">
-      <div id="equipList"></div>
-      <button class="btn-add" onclick="addEquipRow()">+ 장비 추가</button>
-    </div>
-  </div>
-
-  <!-- 작업 내용 -->
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">⚒️</span> 작업 내용 / 공종
-    </div>
-    <div class="section-body">
-      <div id="workList"></div>
-      <button class="btn-add" onclick="addWorkRow()">+ 작업 내용 추가</button>
-    </div>
-  </div>
-
-  <!-- 공정율 -->
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">📈</span> 공정율
-    </div>
-    <div class="section-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label>금일 공정율 (%)</label>
-          <input type="number" id="progressToday" min="0" max="100" placeholder="0" oninput="updateProgress()">
-        </div>
-        <div class="form-group">
-          <label>누계 공정율 (%)</label>
-          <input type="number" id="progressCumul" min="0" max="100" placeholder="0" oninput="updateProgress()">
-        </div>
-      </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
-      </div>
-      <div style="text-align:center; margin-top:6px; font-size:12px; color:var(--gray-text)">
-        누계 공정율: <strong id="progressLabel" style="color:var(--navy)">0%</strong>
-      </div>
-      <div class="form-row" style="margin-top:12px">
-        <div class="form-group">
-          <label>특이사항 / 조치내용</label>
-          <textarea id="specialNote" placeholder="특이사항, 안전사항, 지시사항 등을 기입하세요..."></textarea>
-        </div>
-      </div>
-    </div>
-  </div>
-
-</section>
-
-<!-- ============================== TAB: 사진대지 ============================== -->
-<section class="page" id="tab-photos">
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">📷</span> 사진 업로드
-    </div>
-    <div class="section-body">
-      <label class="photo-upload-area">
-        <span class="photo-upload-icon">📸</span>
-        <div class="photo-upload-text">사진 추가하기</div>
-        <div class="photo-upload-sub">카메라 촬영 또는 갤러리에서 선택</div>
-        <input type="file" accept="image/*" multiple capture="environment" onchange="handlePhotos(event)">
-      </label>
-      <div class="photo-grid" id="photoGrid"></div>
-    </div>
-  </div>
-
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">📝</span> 사진 관련 메모
-    </div>
-    <div class="section-body">
-      <textarea id="photoNote" placeholder="사진 관련 특이사항이나 설명을 기입하세요..." rows="3"></textarea>
-    </div>
-  </div>
-</section>
-
-<!-- ============================== TAB: 누계 ============================== -->
-<section class="page" id="tab-cumul">
-
-  <div class="cumul-card">
-    <div class="cumul-label">누계 투입 인원</div>
-    <div>
-      <span class="cumul-value" id="cumulTotalWorker">0</span>
-      <span class="cumul-unit">명</span>
-    </div>
-  </div>
-
-  <div class="cumul-grid">
-    <div class="cumul-mini">
-      <div class="cumul-mini-label">기술자 누계</div>
-      <div class="cumul-mini-val" id="cumulSkill">0</div>
-      <div class="cumul-mini-unit">명</div>
-    </div>
-    <div class="cumul-mini">
-      <div class="cumul-mini-label">기능공 누계</div>
-      <div class="cumul-mini-val" id="cumulTech">0</div>
-      <div class="cumul-mini-unit">명</div>
-    </div>
-    <div class="cumul-mini">
-      <div class="cumul-mini-label">보통인부 누계</div>
-      <div class="cumul-mini-val" id="cumulLabor">0</div>
-      <div class="cumul-mini-unit">명</div>
-    </div>
-    <div class="cumul-mini">
-      <div class="cumul-mini-label">누계 작성 일수</div>
-      <div class="cumul-mini-val" id="cumulDays">0</div>
-      <div class="cumul-mini-unit">일</div>
-    </div>
-  </div>
-
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">📈</span> 누계 공정 현황
-    </div>
-    <div class="section-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label>전체 공정율 누계</label>
-          <div style="margin-top:4px">
-            <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--gray-text)">
-              <span>0%</span>
-              <strong style="color:var(--navy)" id="cumulProgressLabel">0%</strong>
-              <span>100%</span>
-            </div>
-            <div class="progress-bar-bg" style="margin-top:4px">
-              <div class="progress-bar-fill" id="cumulProgressFill" style="width:0%"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-top:16px">
-        <div class="summary-row">
-          <span class="summary-label">총 저장 일보 수</span>
-          <span class="summary-value" id="cumulReports">0 건</span>
-        </div>
-        <div class="summary-row">
-          <span class="summary-label">마지막 작성일</span>
-          <span class="summary-value" id="cumulLastDate">-</span>
-        </div>
-        <div class="summary-row">
-          <span class="summary-label">사진 업로드 수</span>
-          <span class="summary-value" id="cumulPhotos">0 장</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">🔢</span> 누계 인원 직접 입력
-    </div>
-    <div class="section-body">
-      <div class="form-row">
-        <div class="form-group">
-          <label>기술자 누계</label>
-          <input type="number" id="manualSkill" placeholder="0" oninput="saveCumul()">
-        </div>
-        <div class="form-group">
-          <label>기능공 누계</label>
-          <input type="number" id="manualTech" placeholder="0" oninput="saveCumul()">
-        </div>
-        <div class="form-group">
-          <label>보통인부 누계</label>
-          <input type="number" id="manualLabor" placeholder="0" oninput="saveCumul()">
-        </div>
-      </div>
-      <p style="font-size:11px; color:var(--gray-text)">※ 일보 저장시 자동 누적됩니다. 수동 보정도 가능합니다.</p>
-    </div>
-  </div>
-
-</section>
-
-<!-- ============================== TAB: 이력 ============================== -->
-<section class="page" id="tab-history">
-  <div id="historyEmpty" style="text-align:center; padding:50px 20px; color:var(--gray-text)">
-    <div style="font-size:48px; margin-bottom:12px">📋</div>
-    <div style="font-size:15px; font-weight:700">저장된 일보가 없습니다</div>
-    <div style="font-size:12px; margin-top:6px">일보를 작성하고 저장해보세요!</div>
-  </div>
-  <div id="historyList"></div>
-</section>
-
-<!-- ============================== TAB: 전송 ============================== -->
-<section class="page" id="tab-send">
-
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">📤</span> 일보 전송 / 내보내기
-    </div>
-    <div class="section-body">
-      <div class="action-grid">
-        <button class="action-btn btn-excel" onclick="exportExcel()">
-          <span class="action-btn-icon">📊</span>엑셀 다운로드
-        </button>
-        <button class="action-btn btn-email" onclick="sendEmail()">
-          <span class="action-btn-icon">✉️</span>이메일 전송
-        </button>
-        <button class="action-btn btn-kakao" onclick="shareKakao()">
-          <span class="action-btn-icon">💬</span>카카오톡 공유
-        </button>
-        <button class="action-btn" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);color:white" onclick="shareGeneral()">
-          <span class="action-btn-icon">🔗</span>다른 앱 공유
-        </button>
-        <button class="action-btn btn-save" onclick="saveReport()">
-          <span class="action-btn-icon">💾</span> 일보 저장
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 미리보기 -->
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">👁</span> 오늘 일보 미리보기
-    </div>
-    <div class="section-body" id="previewContent">
-      <div style="color:var(--gray-text); font-size:13px; text-align:center; padding:20px">
-        작성 탭에서 내용을 입력하면 여기에 미리보기가 표시됩니다.
-      </div>
-    </div>
-  </div>
-
-  <!-- 이메일 수신자 설정 -->
-  <div class="section-card">
-    <div class="section-header">
-      <span class="section-header-icon">⚙️</span> 전송 설정
-    </div>
-    <div class="section-body">
-      <div class="form-group" style="margin-bottom:12px">
-        <label>이메일 수신자</label>
-        <input type="text" id="emailRecipient" placeholder="example@email.com" oninput="saveSettings()">
-      </div>
-      <div class="form-group">
-        <label>이메일 참조 (CC)</label>
-        <input type="text" id="emailCC" placeholder="참조자 이메일 (선택사항)" oninput="saveSettings()">
-      </div>
-    </div>
-  </div>
-
-</section>
-
-<!-- ============================== PROJECT MODAL ============================== -->
-<div class="modal-overlay" id="projectModal" onclick="closeProjectModal(event)">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div class="modal-title">🏗 현장 정보 설정</div>
-    <div class="form-group" style="margin-bottom:12px">
-      <label>현장명</label>
-      <input type="text" id="mProjectName" placeholder="예) ○○ 아파트 신축공사">
-    </div>
-    <div class="form-group" style="margin-bottom:12px">
-      <label>공사명</label>
-      <input type="text" id="mProjectWork" placeholder="예) 철근콘크리트 공사">
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>발주처</label>
-        <input type="text" id="mClient" placeholder="발주처명">
-      </div>
-      <div class="form-group">
-        <label>감독관</label>
-        <input type="text" id="mSupervisor" placeholder="성명">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>시공사</label>
-        <input type="text" id="mContractor" placeholder="시공사명">
-      </div>
-      <div class="form-group">
-        <label>현장소장</label>
-        <input type="text" id="mManager" placeholder="성명">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>공사 시작일</label>
-        <input type="date" id="mStartDate">
-      </div>
-      <div class="form-group">
-        <label>공사 완료 예정일</label>
-        <input type="date" id="mEndDate">
-      </div>
-    </div>
-    <button class="btn-add" style="margin-top:12px; background:var(--navy); color:white; border:none; font-family:'Noto Sans KR',sans-serif; font-size:14px; padding:14px" onclick="saveProject()">저장</button>
   </div>
 </div>
 
-<!-- HISTORY DETAIL MODAL -->
-<div class="modal-overlay" id="historyModal" onclick="closeHistoryModal(event)">
-  <div class="modal-sheet" id="historyModalContent"></div>
+<!-- ============================= MAIN APP SCREEN ============================= -->
+<div class="screen" id="scApp">
+
+  <!-- HEADER -->
+  <header class="hdr">
+    <div class="hdr-top">
+      <div class="hdr-logo">
+        <div class="hdr-icon">🏗</div>
+        <div>
+          <div class="hdr-title">공사일보</div>
+          <div class="hdr-sub" id="hdrSiteName">현장명</div>
+        </div>
+      </div>
+      <div class="hdr-right">
+        <div class="hdr-date" id="hdrDate"></div>
+        <button class="home-btn" onclick="goHome()">🏠 현장</button>
+      </div>
+    </div>
+    <nav class="tabs">
+      <div class="tab on" onclick="goTab('write',this)"><span class="tab-ic">📝</span>작성</div>
+      <div class="tab" onclick="goTab('photo',this)"><span class="tab-ic">📷</span>사진</div>
+      <div class="tab" onclick="goTab('cumul',this)"><span class="tab-ic">📊</span>누계</div>
+      <div class="tab" onclick="goTab('hist',this)"><span class="tab-ic">📋</span>이력</div>
+      <div class="tab" onclick="goTab('send',this)"><span class="tab-ic">📤</span>전송</div>
+    </nav>
+  </header>
+
+  <!-- ── PAGE: 작성 ── -->
+  <div class="page on" id="pg-write">
+
+    <div class="proj-meta" id="projMeta" onclick="openProjModal()">
+      <div class="proj-label">현장명 (탭하여 수정)</div>
+      <div class="proj-name" id="projName">현장명</div>
+      <div class="proj-detail" id="projDetail"></div>
+    </div>
+
+    <!-- 기본정보 -->
+    <div class="card">
+      <div class="card-hdr"><span>📅</span> 기본 정보</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="fg"><label>작성일</label><input type="date" id="rDate"></div>
+          <div class="fg"><label>일보 No.</label><input type="text" id="rNo" placeholder="001"></div>
+        </div>
+        <div class="row">
+          <div class="fg"><label>작성자</label><input type="text" id="rAuthor" placeholder="성명"></div>
+          <div class="fg"><label>직위</label><input type="text" id="rTitle" placeholder="직위"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 날씨 -->
+    <div class="card">
+      <div class="card-hdr"><span>🌤</span> 날씨 / 기온</div>
+      <div class="card-body">
+        <div class="row"><div class="fg">
+          <label>날씨</label>
+          <div class="w-btns" id="wMain">
+            <button class="w-btn" onclick="selW(this)">☀️ 맑음</button>
+            <button class="w-btn" onclick="selW(this)">⛅ 흐림</button>
+            <button class="w-btn" onclick="selW(this)">🌧 비</button>
+            <button class="w-btn" onclick="selW(this)">❄️ 눈</button>
+          </div>
+        </div></div>
+        <div class="row">
+          <div class="fg"><label>최저기온 (°C)</label><input type="number" id="tMin" placeholder="예) 8"></div>
+          <div class="fg"><label>최고기온 (°C)</label><input type="number" id="tMax" placeholder="예) 24"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 작업인원 -->
+    <div class="card">
+      <div class="card-hdr">
+        <span>👷</span> 작업인원
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:400">
+          <span style="opacity:.75">공정율</span>
+          <span id="prgBadge" style="background:var(--orange);color:#fff;border-radius:12px;padding:2px 10px;font-weight:700;font-size:13px">0%</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <table class="wtbl" style="font-size:11px">
+          <thead>
+            <tr>
+              <th style="min-width:55px">직종</th>
+              <th style="background:#253560;min-width:32px">관리자</th>
+              <th style="background:#253560;min-width:32px">근로자</th>
+              <th style="background:#1e3830;min-width:28px">화기</th>
+              <th style="background:#1e3830;min-width:28px">신호</th>
+              <th style="background:#1e3830;min-width:28px">유도</th>
+              <th style="background:#1e4a6e;min-width:32px">투입<br>총계</th>
+              <th style="background:#b84a10;min-width:28px">소계</th>
+              <th style="background:#065f46;min-width:32px">공정율</th>
+              <th style="width:22px"></th>
+            </tr>
+          </thead>
+          <tbody id="wBody"></tbody>
+          <tfoot>
+            <tr style="background:linear-gradient(90deg,#f0f4ff,#e8f0fe);font-weight:700;font-size:11px">
+              <td>합계</td>
+              <td id="f0">0</td>
+              <td id="f1">0</td>
+              <td id="f2">0</td><td id="f3">0</td><td id="f4">0</td>
+              <td id="fTarget" style="color:var(--navy)">0</td>
+              <td id="fAll" style="color:var(--orange)">0</td>
+              <td id="fPct" style="color:#065f46">0%</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+        <button class="add-btn" onclick="addWorker()">+ 직종 추가</button>
+
+        <!-- 특이사항은 여기로 이동 -->
+        <div style="margin-top:12px">
+          <label style="display:block;margin-bottom:5px">특이사항 / 조치내용</label>
+          <textarea id="rNote" placeholder="특이사항, 안전, 지시사항 등..." rows="3"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- 장비 -->
+    <div class="card">
+      <div class="card-hdr"><span>🚜</span> 장비 투입 현황</div>
+      <div class="card-body">
+        <div id="equipList"></div>
+        <button class="add-btn" onclick="addEquip()">+ 장비 추가</button>
+      </div>
+    </div>
+
+    <!-- 자재입고 -->
+    <div class="card">
+      <div class="card-hdr"><span>📦</span> 자재 입고</div>
+      <div class="card-body">
+        <div id="matList"></div>
+        <button class="add-btn" onclick="addMat()">+ 자재 추가</button>
+      </div>
+    </div>
+
+    <!-- 작업내용 -->
+    <div class="card">
+      <div class="card-hdr"><span>⚒️</span> 작업 내용 / 공종</div>
+      <div class="card-body">
+        <div id="workList"></div>
+        <button class="add-btn" onclick="addWork()">+ 작업 내용 추가</button>
+      </div>
+    </div>
+
+  </div><!-- /pg-write -->
+
+  <!-- ── PAGE: 사진 ── -->
+  <div class="page" id="pg-photo">
+    <div class="card">
+      <div class="card-hdr"><span>📷</span> 사진 추가</div>
+      <div class="card-body">
+        <div class="photo-btns">
+          <label style="flex:1;cursor:pointer">
+            <div class="pup-btn pup-cam">
+              <span style="font-size:26px">📷</span>
+              <span style="font-size:12px;font-weight:700;margin-top:4px">카메라 촬영</span>
+              <span style="font-size:9px;opacity:.75">직접 찍기</span>
+            </div>
+            <input type="file" accept="image/*" capture="environment" multiple onchange="addPhotos(event)" style="display:none">
+          </label>
+          <label style="flex:1;cursor:pointer">
+            <div class="pup-btn pup-gal">
+              <span style="font-size:26px">🖼️</span>
+              <span style="font-size:12px;font-weight:700;margin-top:4px">갤러리 선택</span>
+              <span style="font-size:9px;opacity:.75">사진 불러오기</span>
+            </div>
+            <input type="file" accept="image/*" multiple onchange="addPhotos(event)" style="display:none">
+          </label>
+        </div>
+        <div id="photoBadge" style="text-align:center;font-size:11px;color:var(--gray);margin-bottom:8px;display:none">
+          📸 <strong id="photoCnt" style="color:var(--navy)">0</strong>장 업로드됨
+        </div>
+        <div class="pgrid" id="photoGrid"></div>
+        <div class="pempty" id="photoEmpty">
+          <div style="font-size:36px;margin-bottom:7px">📂</div>
+          <div style="font-size:12px;font-weight:600">업로드된 사진이 없습니다</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><span>📝</span> 사진 메모</div>
+      <div class="card-body"><textarea id="photoNote" placeholder="사진 관련 메모..." rows="3"></textarea></div>
+    </div>
+    <div id="photoDelAll" style="text-align:center;margin-bottom:14px;display:none">
+      <button onclick="clearPhotos()" style="background:#fee2e2;border:none;color:#dc2626;padding:9px 22px;border-radius:18px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">🗑 사진 전체 삭제</button>
+    </div>
+  </div>
+
+  <!-- ── PAGE: 누계 ── -->
+  <div class="page" id="pg-cumul">
+    <!-- 총 인원 히어로 -->
+    <div class="cumul-hero">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div class="ch-label">누계 총 투입인원</div>
+          <div><span class="ch-val" id="cTotal">0</span><span class="ch-unit">명</span></div></div>
+        <div style="text-align:right"><div class="ch-label">작성 일수</div>
+          <div><span class="ch-val" style="font-size:32px" id="cDays">0</span><span class="ch-unit">일</span></div></div>
+      </div>
+      <div style="margin-top:10px;background:rgba(255,255,255,.1);border-radius:7px;padding:8px 12px;font-size:11px;opacity:.8">※ 저장된 일보에서 자동 집계됩니다</div>
+    </div>
+
+    <!-- 공정율 -->
+    <div class="card">
+      <div class="card-hdr"><span>📈</span> 공정율 누계</div>
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray);margin-bottom:3px">
+          <span>0%</span><strong style="color:var(--navy);font-size:14px" id="cPrgLabel">0%</strong><span>100%</span>
+        </div>
+        <div class="prg-bg"><div class="prg-fill" id="cPrgFill" style="width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:12px">
+          <div style="text-align:center;flex:1">
+            <div style="font-size:10px;color:var(--gray)">총 저장 일보</div>
+            <div style="font-size:19px;font-weight:900;color:var(--navy)" id="cReports">0</div>
+            <div style="font-size:10px;color:var(--gray)">건</div>
+          </div>
+          <div style="text-align:center;flex:1;border-left:1px solid #eee;border-right:1px solid #eee">
+            <div style="font-size:10px;color:var(--gray)">마지막 작성일</div>
+            <div style="font-size:12px;font-weight:700;color:var(--navy);margin-top:3px" id="cLastDate">-</div>
+          </div>
+          <div style="text-align:center;flex:1">
+            <div style="font-size:10px;color:var(--gray)">총 사진</div>
+            <div style="font-size:19px;font-weight:900;color:var(--navy)" id="cPhotos">0</div>
+            <div style="font-size:10px;color:var(--gray)">장</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 👷 인원 누계 -->
+    <div class="card">
+      <div class="card-hdr"><span>👷</span> 인원 누계 (자동집계)</div>
+      <div class="card-body">
+        <div class="mini-grid">
+          <div class="mini"><div class="mini-label">누계 총 인원</div><div class="mini-val" id="cSkill" style="color:var(--orange)">0</div><div class="mini-unit">명</div></div>
+          <div class="mini"><div class="mini-label">누계 목표인원</div><div class="mini-val" id="cTech">0</div><div class="mini-unit">명</div></div>
+          <div class="mini"><div class="mini-label">누계 공정율</div><div class="mini-val" id="cLabor" style="color:#065f46">0%</div><div class="mini-unit"></div></div>
+          <div class="mini" style="background:linear-gradient(135deg,#fff5eb,#fff0e0);border:1.5px solid var(--orange)">
+            <div class="mini-label">작성 일수</div>
+            <div class="mini-val" style="color:var(--orange)" id="cTotal2">0</div>
+            <div class="mini-unit">일</div>
+          </div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:5px">▶ 직종별 누계 상세</div>
+        <div id="cWorkerTbl"><div style="color:var(--gray);font-size:11px;text-align:center;padding:8px">저장된 일보가 없습니다</div></div>
+      </div>
+    </div>
+
+    <!-- 📦 자재 누계 -->
+    <div class="card">
+      <div class="card-hdr"><span>📦</span> 자재 누계 (자동집계)</div>
+      <div class="card-body">
+        <div class="mini-grid">
+          <div class="mini"><div class="mini-label">품목 종류</div><div class="mini-val" id="cMatItems">0</div><div class="mini-unit">종</div></div>
+          <div class="mini"><div class="mini-label">총 입고건</div><div class="mini-val" id="cMatCount">0</div><div class="mini-unit">건</div></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:5px">▶ 품목별 합산 누계</div>
+        <div id="cMatSumTbl"><div style="color:var(--gray);font-size:11px;text-align:center;padding:8px">저장된 자재 정보가 없습니다</div></div>
+        <div style="font-size:11px;font-weight:700;color:var(--navy);margin:12px 0 5px">▶ 날짜별 입고 내역</div>
+        <div id="cMatDetailTbl"><div style="color:var(--gray);font-size:11px;text-align:center;padding:8px">-</div></div>
+      </div>
+    </div>
+
+    <!-- 🚜 장비 누계 -->
+    <div class="card">
+      <div class="card-hdr"><span>🚜</span> 장비 누계 (자동집계)</div>
+      <div class="card-body">
+        <div class="mini-grid">
+          <div class="mini"><div class="mini-label">장비 종류</div><div class="mini-val" id="cEqTypes">0</div><div class="mini-unit">종</div></div>
+          <div class="mini"><div class="mini-label">총 투입대수</div><div class="mini-val" id="cEqTotal">0</div><div class="mini-unit">대</div></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:5px">▶ 장비별 누계 상세</div>
+        <div id="cEqTbl"><div style="color:var(--gray);font-size:11px;text-align:center;padding:8px">저장된 장비 정보가 없습니다</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAGE: 이력 ── -->
+  <div class="page" id="pg-hist">
+    <!-- 상단 컨트롤 바 -->
+    <div id="histCtrl" style="display:none;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--gray)">총 <strong id="histCnt" style="color:var(--navy)">0</strong>건</div>
+      <button onclick="deleteAllReports()" style="background:#fee2e2;border:none;color:#dc2626;padding:7px 14px;border-radius:18px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 전체 삭제</button>
+    </div>
+    <div id="histEmpty" style="text-align:center;padding:50px 0;color:var(--gray);display:none">
+      <div style="font-size:44px;margin-bottom:10px">📋</div>
+      <div style="font-size:14px;font-weight:700;color:var(--navy)">저장된 일보가 없습니다</div>
+      <div style="font-size:11px;margin-top:5px">작성 탭에서 일보를 저장해보세요</div>
+    </div>
+    <div id="histList"></div>
+  </div>
+
+  <!-- ── PAGE: 전송 ── -->
+  <div class="page" id="pg-send">
+    <div class="card">
+      <div class="card-hdr"><span>📤</span> 일보 내보내기</div>
+      <div class="card-body">
+        <div class="act-grid">
+          <button class="act-btn" style="background:linear-gradient(135deg,#1a6b35,#217a3e);color:#fff" onclick="exportExcel()">
+            <span class="act-ic">📊</span>엑셀 다운로드
+          </button>
+          <button class="act-btn" style="background:linear-gradient(135deg,#1a56db,#1d4ed8);color:#fff" onclick="sendEmail()">
+            <span class="act-ic">✉️</span>이메일 전송
+          </button>
+          <button class="act-btn" style="background:linear-gradient(135deg,#f7e01d,#f5c800);color:#3a2a00" onclick="shareKakao()">
+            <span class="act-ic">💬</span>카카오톡 공유
+          </button>
+          <button class="act-btn" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff" onclick="shareGeneral()">
+            <span class="act-ic">🔗</span>다른 앱 공유
+          </button>
+          <!-- 네이버 웍스 버튼 (전체 너비) -->
+          <button class="act-btn" style="background:linear-gradient(135deg,#03c75a,#02a84a);color:#fff;grid-column:span 2;flex-direction:row;padding:14px;font-size:13px;gap:10px" onclick="shareNaverWorks()">
+            <span style="font-size:22px">🟢</span>
+            <div style="text-align:left">
+              <div style="font-weight:700">네이버 웍스 공유</div>
+              <div style="font-size:10px;opacity:.85;margin-top:1px">엑셀 저장 후 웍스 게시판에 첨부</div>
+            </div>
+          </button>
+          <button class="act-btn btn-xl" onclick="saveReport()">
+            <span class="act-ic">💾</span> 일보 저장
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 미리보기 -->
+    <div class="card">
+      <div class="card-hdr"><span>👁</span> 오늘 일보 미리보기</div>
+      <div class="card-body" id="previewBody">
+        <div style="color:var(--gray);font-size:12px;text-align:center;padding:18px">작성 탭에서 내용을 입력하면 미리보기가 표시됩니다</div>
+      </div>
+    </div>
+
+    <!-- 전송 설정 -->
+    <div class="card">
+      <div class="card-hdr"><span>⚙️</span> 전송 설정</div>
+      <div class="card-body">
+        <div class="fg" style="margin-bottom:10px"><label>이메일 수신자</label><input type="text" id="cfgEmail" placeholder="example@email.com" oninput="saveSettings()"></div>
+        <div class="fg"><label>이메일 참조 (CC)</label><input type="text" id="cfgCC" placeholder="참조자 이메일 (선택)" oninput="saveSettings()"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /scApp -->
+
+<!-- ============================= MODALS ============================= -->
+
+<!-- 현장 추가/수정 모달 -->
+<div class="overlay" id="ovSite" onclick="closeSiteModal(event)">
+  <div class="msheet">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="siteModalTitle">🏗 현장 추가</div>
+    <input type="hidden" id="editSiteId">
+    <div class="fg" style="margin-bottom:10px"><label>현장명 *</label><input type="text" id="sName" placeholder="예) ○○ 아파트 신축공사"></div>
+    <div class="fg" style="margin-bottom:10px"><label>공사명</label><input type="text" id="sWork" placeholder="예) 철근콘크리트 공사"></div>
+    <div class="row">
+      <div class="fg"><label>발주처</label><input type="text" id="sClient" placeholder="발주처명"></div>
+      <div class="fg"><label>감독관</label><input type="text" id="sSupervisor" placeholder="성명"></div>
+    </div>
+    <div class="row">
+      <div class="fg"><label>시공사</label><input type="text" id="sContractor" placeholder="시공사명"></div>
+      <div class="fg"><label>현장소장</label><input type="text" id="sManager" placeholder="성명"></div>
+    </div>
+    <div class="row">
+      <div class="fg"><label>시작일</label><input type="date" id="sStart"></div>
+      <div class="fg"><label>완료예정일</label><input type="date" id="sEnd"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button onclick="saveSite()" style="flex:1;padding:13px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">저장</button>
+      <button onclick="closeSiteModal()" style="padding:13px 16px;background:#f0f2f7;color:var(--navy);border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- 현장 정보 수정 모달 (작성 화면 내) -->
+<div class="overlay" id="ovProj" onclick="closeProjModal(event)">
+  <div class="msheet">
+    <div class="mhandle"></div>
+    <div class="mtitle">🏗 현장 정보 수정</div>
+    <div class="fg" style="margin-bottom:10px"><label>현장명</label><input type="text" id="pName"></div>
+    <div class="fg" style="margin-bottom:10px"><label>공사명</label><input type="text" id="pWork"></div>
+    <div class="row">
+      <div class="fg"><label>발주처</label><input type="text" id="pClient"></div>
+      <div class="fg"><label>감독관</label><input type="text" id="pSupervisor"></div>
+    </div>
+    <div class="row">
+      <div class="fg"><label>시공사</label><input type="text" id="pContractor"></div>
+      <div class="fg"><label>현장소장</label><input type="text" id="pManager"></div>
+    </div>
+    <div class="row">
+      <div class="fg"><label>시작일</label><input type="date" id="pStart"></div>
+      <div class="fg"><label>완료예정일</label><input type="date" id="pEnd"></div>
+    </div>
+    <button onclick="saveProjEdit()" style="width:100%;margin-top:12px;padding:13px;background:var(--orange);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">저장</button>
+  </div>
+</div>
+
+<!-- 이력 상세 모달 -->
+<div class="overlay" id="ovHist" onclick="closeHistModal(event)">
+  <div class="msheet" id="histModalContent"></div>
 </div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<!-- ============================= SCRIPT ============================= -->
 <script>
-// ======================================================
-// STATE & STORAGE
-// ======================================================
-let state = {
-  project: {},
-  weatherAM: '',
-  weatherPM: '',
-  photos: [],  // {dataUrl, caption}
-  workers: [],
-  equips: [],
-  works: [],
-  settings: {},
-  cumul: { skill:0, tech:0, labor:0 }
-};
+// ── STORAGE KEYS ──
+const K_SITES    = 'gsa_sites_v1';
+const K_SETTINGS = 'gsa_settings';
+function K_RPT(siteId){ return 'gsa_rpt_' + siteId; }
 
-let reports = [];
+// ── STATE ──
+let sites = [];
+let curSiteId = null;
+let reports   = [];
+let wMain = '';
+let photos = []; // {dataUrl, caption}
+let settings = {};
 
-const STORE_KEY = 'gsa_reports_v2';
-const PROJECT_KEY = 'gsa_project';
-const SETTINGS_KEY = 'gsa_settings';
-const CUMUL_KEY = 'gsa_cumul';
-
-function load() {
-  try {
-    reports = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
-    state.project = JSON.parse(localStorage.getItem(PROJECT_KEY) || '{}');
-    state.settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
-    state.cumul = JSON.parse(localStorage.getItem(CUMUL_KEY) || '{"skill":0,"tech":0,"labor":0}');
-  } catch(e) {}
+// ── UTILS ──
+function $id(id){ return document.getElementById(id); }
+function toast(msg){
+  const t=$id('toast'); t.textContent=msg; t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'), 2500);
 }
+function curSite(){ return sites.find(s=>s.id===curSiteId)||{}; }
+function loadSites(){ try{sites=JSON.parse(localStorage.getItem(K_SITES)||'[]')}catch(e){sites=[]} }
+function saveSites(){ localStorage.setItem(K_SITES, JSON.stringify(sites)); }
+function loadReports(siteId){ try{reports=JSON.parse(localStorage.getItem(K_RPT(siteId))||'[]')}catch(e){reports=[]} }
+function saveReports(){ if(curSiteId) localStorage.setItem(K_RPT(curSiteId), JSON.stringify(reports)); }
 
-function saveSettings() {
-  state.settings.email = document.getElementById('emailRecipient').value;
-  state.settings.emailCC = document.getElementById('emailCC').value;
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
-}
-
-function saveCumul() {
-  state.cumul.skill = parseInt(document.getElementById('manualSkill').value)||0;
-  state.cumul.tech = parseInt(document.getElementById('manualTech').value)||0;
-  state.cumul.labor = parseInt(document.getElementById('manualLabor').value)||0;
-  localStorage.setItem(CUMUL_KEY, JSON.stringify(state.cumul));
-  refreshCumul();
-}
-
-// ======================================================
-// INIT
-// ======================================================
-window.addEventListener('DOMContentLoaded', () => {
-  load();
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', ()=>{
+  try{settings=JSON.parse(localStorage.getItem(K_SETTINGS)||'{}')}catch(e){}
+  loadSites();
   initDate();
-  initProject();
-  initDefaultRows();
-  initSettings();
-  refreshHistory();
-  refreshCumul();
   setupInstall();
+  // 마지막 현장 자동 진입
+  const last = localStorage.getItem('gsa_last');
+  if(last && sites.find(s=>s.id===last)) enterSite(last);
+  else showHome();
 });
 
-function initDate() {
-  const now = new Date();
-  document.getElementById('reportDate').value = now.toISOString().split('T')[0];
-  document.getElementById('headerDate').innerHTML =
-    now.getFullYear() + '년 ' + (now.getMonth()+1) + '월 ' + now.getDate() + '일<br>' +
-    ['일','월','화','수','목','금','토'][now.getDay()] + '요일';
+function initDate(){
+  const n=new Date();
+  const days=['일','월','화','수','목','금','토'];
+  const str=n.getFullYear()+'년 '+(n.getMonth()+1)+'월 '+n.getDate()+'일 '+days[n.getDay()]+'요일';
+  if($id('homeDateTxt')) $id('homeDateTxt').textContent=str;
+  $id('hdrDate').innerHTML=n.getFullYear()+'년 '+(n.getMonth()+1)+'월 '+n.getDate()+'일<br>'+days[n.getDay()]+'요일';
 }
 
-function initProject() {
-  const p = state.project;
-  if (p.name) {
-    document.getElementById('metaProjectName').textContent = p.name;
-    document.getElementById('metaProjectDetail').textContent =
-      [p.work, p.supervisor ? '감독관: '+p.supervisor : ''].filter(Boolean).join(' · ');
-    document.getElementById('mProjectName').value = p.name || '';
-    document.getElementById('mProjectWork').value = p.work || '';
-    document.getElementById('mClient').value = p.client || '';
-    document.getElementById('mSupervisor').value = p.supervisor || '';
-    document.getElementById('mContractor').value = p.contractor || '';
-    document.getElementById('mManager').value = p.manager || '';
-    document.getElementById('mStartDate').value = p.startDate || '';
-    document.getElementById('mEndDate').value = p.endDate || '';
-  }
+// ── SCREEN SWITCH ──
+function showHome(){
+  $id('scHome').classList.add('on');
+  $id('scApp').classList.remove('on');
+  renderHome();
+}
+function goHome(){
+  curSiteId=null;
+  localStorage.removeItem('gsa_last');
+  showHome();
+}
+function showApp(){
+  $id('scHome').classList.remove('on');
+  $id('scApp').classList.add('on');
 }
 
-function initDefaultRows() {
-  // Default worker rows
-  ['철근공','형틀목공','콘크리트공','일반작업'].forEach(name => addWorkerRow(name));
-  addEquipRow();
-  addWorkRow();
-}
-
-function initSettings() {
-  if (state.settings.email) document.getElementById('emailRecipient').value = state.settings.email;
-  if (state.settings.emailCC) document.getElementById('emailCC').value = state.settings.emailCC;
-  if (state.cumul) {
-    document.getElementById('manualSkill').value = state.cumul.skill || 0;
-    document.getElementById('manualTech').value = state.cumul.tech || 0;
-    document.getElementById('manualLabor').value = state.cumul.labor || 0;
-  }
-}
-
-// ======================================================
-// TABS
-// ======================================================
-function goTab(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-'+id).classList.add('active');
-  event.currentTarget.classList.add('active');
-  if (id === 'send') buildPreview();
-  if (id === 'cumul') refreshCumul();
-  if (id === 'history') refreshHistory();
-}
-
-// ======================================================
-// WEATHER
-// ======================================================
-function selWeather(btn, slot) {
-  const container = slot === 'AM' ? document.getElementById('weatherAM') : document.getElementById('weatherPM');
-  container.querySelectorAll('.weather-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  if (slot === 'AM') state.weatherAM = btn.textContent.trim();
-  else state.weatherPM = btn.textContent.trim();
-}
-
-// ======================================================
-// WORKER ROWS
-// ======================================================
-function addWorkerRow(name='') {
-  const tbody = document.getElementById('workerBody');
-  const tr = document.createElement('tr');
-  const idx = tbody.children.length + 1;
-  tr.innerHTML = `
-    <td><input type="text" value="${name}" placeholder="직종명" oninput="calcWorkerTotal()"></td>
-    <td><input type="number" value="0" min="0" oninput="calcWorkerTotal()"></td>
-    <td><input type="number" value="0" min="0" oninput="calcWorkerTotal()"></td>
-    <td><input type="number" value="0" min="0" oninput="calcWorkerTotal()"></td>
-    <td id="subtotal${idx}" style="font-weight:700;color:var(--orange)">0</td>
-  `;
-  tbody.appendChild(tr);
-  calcWorkerTotal();
-}
-
-function calcWorkerTotal() {
-  const rows = document.querySelectorAll('#workerBody tr');
-  let ts=0, tt=0, tl=0;
-  rows.forEach((tr, i) => {
-    const inputs = tr.querySelectorAll('input[type="number"]');
-    const s = parseInt(inputs[0]?.value)||0;
-    const t = parseInt(inputs[1]?.value)||0;
-    const l = parseInt(inputs[2]?.value)||0;
-    const sub = s+t+l;
-    const cell = tr.querySelector(`td:last-child`);
-    if (cell) cell.textContent = sub;
-    ts+=s; tt+=t; tl+=l;
+// ── HOME ──
+function renderHome(){
+  loadSites();
+  let totalRpts=0, totalW=0;
+  sites.forEach(s=>{
+    let r=[]; try{r=JSON.parse(localStorage.getItem(K_RPT(s.id))||'[]')}catch(e){}
+    totalRpts+=r.length;
+    r.forEach(rpt=>(rpt.workers||[]).forEach(w=>{ totalW+=(w.skill||0)+(w.tech||0)+(w.labor||0); }));
   });
-  document.getElementById('totalSkill').textContent = ts;
-  document.getElementById('totalTech').textContent = tt;
-  document.getElementById('totalLabor').textContent = tl;
-  document.getElementById('totalAll').textContent = ts+tt+tl;
-}
+  $id('dSites').textContent=sites.length;
+  $id('dReports').textContent=totalRpts;
+  $id('dWorkers').textContent=totalW;
 
-// ======================================================
-// EQUIPMENT ROWS
-// ======================================================
-function addEquipRow() {
-  const list = document.getElementById('equipList');
-  const idx = list.children.length + 1;
-  const div = document.createElement('div');
-  div.className = 'equip-row';
-  div.innerHTML = `
-    <div class="equip-idx">${idx}</div>
-    <input type="text" placeholder="장비명 (예: 굴착기 0.6㎥)" style="flex:2">
-    <input type="number" placeholder="대수" min="1" value="1" style="flex:1; max-width:60px; text-align:center">
-    <input type="text" placeholder="작업내용" style="flex:2">
-    <button class="btn-remove" onclick="removeRow(this)">✕</button>
-  `;
-  list.appendChild(div);
-}
+  const list=$id('siteList'), empty=$id('siteEmpty');
+  list.innerHTML='';
+  if(!sites.length){ empty.style.display='block'; return; }
+  empty.style.display='none';
 
-// ======================================================
-// WORK ROWS
-// ======================================================
-function addWorkRow() {
-  const list = document.getElementById('workList');
-  const idx = list.children.length + 1;
-  const div = document.createElement('div');
-  div.className = 'work-item';
-  div.innerHTML = `
-    <div class="work-item-num">${idx}</div>
-    <textarea placeholder="공종 및 작업내용을 입력하세요..." rows="2" style="flex:1; min-height:60px"></textarea>
-    <button class="btn-remove" onclick="removeRow(this)" style="margin-top:8px">✕</button>
-  `;
-  list.appendChild(div);
-}
+  sites.forEach(s=>{
+    let rpts=[]; try{rpts=JSON.parse(localStorage.getItem(K_RPT(s.id))||'[]')}catch(e){}
+    const last=rpts[0];
+    const pct=last?(last.totalPct||parseInt(last.progressCumul)||0):0;
+    const wTotal=rpts.reduce((sum,r)=>sum+(r.totalSub||(r.workers||[]).reduce((s,w)=>s+(w.sub||w.skill||0)+(w.tech||0)+(w.labor||0),0)),0);
 
-function removeRow(btn) {
-  btn.parentElement.remove();
-  calcWorkerTotal();
-}
-
-// ======================================================
-// PROGRESS
-// ======================================================
-function updateProgress() {
-  const val = parseInt(document.getElementById('progressCumul').value)||0;
-  document.getElementById('progressFill').style.width = val + '%';
-  document.getElementById('progressLabel').textContent = val + '%';
-}
-
-// ======================================================
-// PHOTO UPLOAD
-// ======================================================
-function handlePhotos(e) {
-  const files = Array.from(e.target.files);
-  files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      state.photos.push({ dataUrl: ev.target.result, caption: '' });
-      renderPhotoGrid();
-    };
-    reader.readAsDataURL(file);
-  });
-  e.target.value = '';
-}
-
-function renderPhotoGrid() {
-  const grid = document.getElementById('photoGrid');
-  grid.innerHTML = '';
-  state.photos.forEach((p, i) => {
-    const div = document.createElement('div');
-    div.className = 'photo-item';
-    div.innerHTML = `
-      <img src="${p.dataUrl}" alt="사진 ${i+1}">
-      <input class="photo-caption-input" type="text" placeholder="설명 입력..." value="${p.caption}"
-        oninput="state.photos[${i}].caption=this.value">
-      <button class="photo-item-del" onclick="removePhoto(${i})">✕</button>
-    `;
-    grid.appendChild(div);
-  });
-}
-
-function removePhoto(idx) {
-  state.photos.splice(idx, 1);
-  renderPhotoGrid();
-}
-
-// ======================================================
-// PROJECT MODAL
-// ======================================================
-function openProjectModal() {
-  document.getElementById('projectModal').classList.add('active');
-}
-
-function closeProjectModal(e) {
-  if (e.target === document.getElementById('projectModal')) {
-    document.getElementById('projectModal').classList.remove('active');
-  }
-}
-
-function saveProject() {
-  state.project = {
-    name: document.getElementById('mProjectName').value,
-    work: document.getElementById('mProjectWork').value,
-    client: document.getElementById('mClient').value,
-    supervisor: document.getElementById('mSupervisor').value,
-    contractor: document.getElementById('mContractor').value,
-    manager: document.getElementById('mManager').value,
-    startDate: document.getElementById('mStartDate').value,
-    endDate: document.getElementById('mEndDate').value,
-  };
-  localStorage.setItem(PROJECT_KEY, JSON.stringify(state.project));
-  initProject();
-  document.getElementById('projectModal').classList.remove('active');
-  showToast('✅ 현장 정보가 저장되었습니다');
-}
-
-// ======================================================
-// COLLECT DATA
-// ======================================================
-function collectReport() {
-  const workers = [];
-  document.querySelectorAll('#workerBody tr').forEach(tr => {
-    const inputs = tr.querySelectorAll('input');
-    workers.push({
-      job: inputs[0]?.value || '',
-      skill: parseInt(inputs[1]?.value)||0,
-      tech: parseInt(inputs[2]?.value)||0,
-      labor: parseInt(inputs[3]?.value)||0,
-    });
-  });
-
-  const equips = [];
-  document.querySelectorAll('#equipList .equip-row').forEach(row => {
-    const inputs = row.querySelectorAll('input');
-    equips.push({ name: inputs[0]?.value||'', qty: inputs[1]?.value||0, desc: inputs[2]?.value||'' });
-  });
-
-  const works = [];
-  document.querySelectorAll('#workList .work-item textarea').forEach(ta => {
-    if (ta.value.trim()) works.push(ta.value.trim());
-  });
-
-  return {
-    id: Date.now(),
-    date: document.getElementById('reportDate').value,
-    no: document.getElementById('reportNo').value,
-    author: document.getElementById('author').value,
-    authorTitle: document.getElementById('authorTitle').value,
-    weatherAM: state.weatherAM,
-    weatherPM: state.weatherPM,
-    tempMin: document.getElementById('tempMin').value,
-    tempMax: document.getElementById('tempMax').value,
-    workers,
-    equips,
-    works,
-    progressToday: document.getElementById('progressToday').value,
-    progressCumul: document.getElementById('progressCumul').value,
-    specialNote: document.getElementById('specialNote').value,
-    photoNote: document.getElementById('photoNote').value,
-    photos: state.photos.map(p => ({ caption: p.caption, thumb: p.dataUrl.substring(0,100) })),
-    photoCount: state.photos.length,
-    project: { ...state.project },
-  };
-}
-
-// ======================================================
-// SAVE REPORT
-// ======================================================
-function saveReport() {
-  const report = collectReport();
-  const existIdx = reports.findIndex(r => r.date === report.date && r.no === report.no);
-  if (existIdx >= 0) reports[existIdx] = report;
-  else reports.unshift(report);
-
-  // Update cumul
-  const workerTotal = report.workers.reduce((s,w) => s+w.skill+w.tech+w.labor, 0);
-  state.cumul.skill += report.workers.reduce((s,w)=>s+w.skill,0);
-  state.cumul.tech += report.workers.reduce((s,w)=>s+w.tech,0);
-  state.cumul.labor += report.workers.reduce((s,w)=>s+w.labor,0);
-  localStorage.setItem(CUMUL_KEY, JSON.stringify(state.cumul));
-  document.getElementById('manualSkill').value = state.cumul.skill;
-  document.getElementById('manualTech').value = state.cumul.tech;
-  document.getElementById('manualLabor').value = state.cumul.labor;
-
-  localStorage.setItem(STORE_KEY, JSON.stringify(reports));
-  refreshHistory();
-  refreshCumul();
-  showToast('💾 일보가 저장되었습니다');
-}
-
-// ======================================================
-// HISTORY
-// ======================================================
-function refreshHistory() {
-  const list = document.getElementById('historyList');
-  const empty = document.getElementById('historyEmpty');
-  list.innerHTML = '';
-  if (!reports.length) { empty.style.display = 'block'; return; }
-  empty.style.display = 'none';
-  reports.forEach(r => {
-    const d = new Date(r.date);
-    const mon = (d.getMonth()+1)+'월';
-    const day = d.getDate();
-    const workerTotal = r.workers ? r.workers.reduce((s,w)=>s+w.skill+w.tech+w.labor,0) : 0;
-    const div = document.createElement('div');
-    div.className = 'history-item';
-    div.innerHTML = `
-      <div class="history-date-badge">
-        <div class="history-date-day">${day}</div>
-        <div class="history-date-mon">${mon}</div>
+    const div=document.createElement('div');
+    div.className='site-card';
+    div.innerHTML=`
+      <div class="site-accent"></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px">
+        <div class="site-name">${s.name}</div>
+        <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">
+          <button class="icon-btn" style="background:#f0f4ff;color:var(--navy)" onclick="event.stopPropagation();editSite('${s.id}')">✏️</button>
+          <button class="icon-btn" style="background:#fee2e2;color:#dc2626" onclick="event.stopPropagation();deleteSite('${s.id}')">🗑</button>
+        </div>
       </div>
-      <div class="history-info">
-        <div class="history-title">일보 No.${r.no||'-'} · ${r.author||'작성자 미입력'}</div>
-        <div class="history-sub">👷 ${workerTotal}명 · 📷 ${r.photoCount||0}장 · ${r.weatherAM||'-'}</div>
+      <div class="site-sub">${s.work||''} ${s.supervisor?'· 감독관: '+s.supervisor:''}</div>
+      <div class="site-stats">
+        <span>📋 일보 ${rpts.length}건</span>
+        <span>👷 ${wTotal}명</span>
+        <span>📅 ${last?last.date:'미작성'}</span>
+        ${s.startDate?`<span>🗓 ${s.startDate}~</span>`:''}
       </div>
-      <div class="history-progress">${r.progressCumul||0}%</div>
-    `;
-    div.onclick = () => openHistoryDetail(r);
+      <div class="site-prg-bg"><div class="site-prg-fill" style="width:${pct}%"></div></div>
+      <div class="site-bottom">
+        <span style="font-size:10px;color:var(--gray)">공정율 누계 ${pct}%</span>
+        <button class="enter-btn" onclick="enterSite('${s.id}')">일보 작성 →</button>
+      </div>`;
     list.appendChild(div);
   });
 }
 
-function openHistoryDetail(r) {
-  const modal = document.getElementById('historyModal');
-  const content = document.getElementById('historyModalContent');
-  const workerTotal = r.workers ? r.workers.reduce((s,w)=>s+w.skill+w.tech+w.labor,0) : 0;
-  const workerRows = r.workers ? r.workers.map(w =>
-    `<div class="summary-row"><span class="summary-label">${w.job||'-'}</span>
-     <span class="summary-value">기술${w.skill} · 기능${w.tech} · 인부${w.labor}</span></div>`
-  ).join('') : '';
-  const equipRows = r.equips ? r.equips.map(e =>
-    `<div class="summary-row"><span class="summary-label">${e.name}</span><span class="summary-value">${e.qty}대</span></div>`
-  ).join('') : '';
-
-  content.innerHTML = `
-    <div class="modal-handle"></div>
-    <div class="modal-title">📋 ${r.date} 일보 상세</div>
-    <div class="summary-row"><span class="summary-label">날씨</span><span class="summary-value">오전 ${r.weatherAM||'-'} / 오후 ${r.weatherPM||'-'}</span></div>
-    <div class="summary-row"><span class="summary-label">기온</span><span class="summary-value">${r.tempMin||'-'}°C ~ ${r.tempMax||'-'}°C</span></div>
-    <div class="summary-row"><span class="summary-label">총 투입인원</span><span class="summary-value">${workerTotal}명</span></div>
-    <div style="margin:10px 0 4px; font-size:11px; font-weight:700; color:var(--navy)">직종별 인원</div>
-    ${workerRows}
-    <div style="margin:10px 0 4px; font-size:11px; font-weight:700; color:var(--navy)">장비 현황</div>
-    ${equipRows}
-    <div class="summary-row"><span class="summary-label">공정율</span><span class="summary-value">금일 ${r.progressToday||0}% / 누계 ${r.progressCumul||0}%</span></div>
-    <div class="summary-row"><span class="summary-label">사진</span><span class="summary-value">${r.photoCount||0}장</span></div>
-    <div style="margin-top:12px; display:flex; gap:8px">
-      <button class="btn-add" style="background:var(--orange);color:white;border:none;font-family:inherit;font-size:13px" onclick="exportExcelFromReport(${r.id})">📊 엑셀 다운로드</button>
-      <button class="btn-add" style="background:#dc2626;color:white;border:none;font-family:inherit;font-size:13px" onclick="deleteReport(${r.id})">🗑 삭제</button>
-    </div>
-  `;
-  modal.classList.add('active');
+// ── SITE MODAL ──
+function openSiteModal(){
+  $id('siteModalTitle').textContent='🏗 현장 추가';
+  $id('editSiteId').value='';
+  ['sName','sWork','sClient','sSupervisor','sContractor','sManager','sStart','sEnd']
+    .forEach(id=>$id(id).value='');
+  $id('ovSite').classList.add('on');
+}
+function editSite(id){
+  const s=sites.find(x=>x.id===id); if(!s) return;
+  $id('siteModalTitle').textContent='✏️ 현장 수정';
+  $id('editSiteId').value=s.id;
+  $id('sName').value=s.name||''; $id('sWork').value=s.work||'';
+  $id('sClient').value=s.client||''; $id('sSupervisor').value=s.supervisor||'';
+  $id('sContractor').value=s.contractor||''; $id('sManager').value=s.manager||'';
+  $id('sStart').value=s.startDate||''; $id('sEnd').value=s.endDate||'';
+  $id('ovSite').classList.add('on');
+}
+function closeSiteModal(e){
+  if(!e||e.target===$id('ovSite')) $id('ovSite').classList.remove('on');
+}
+function saveSite(){
+  const name=$id('sName').value.trim();
+  if(!name){toast('❗ 현장명을 입력해주세요'); return;}
+  const editId=$id('editSiteId').value;
+  const data={name, work:$id('sWork').value, client:$id('sClient').value,
+    supervisor:$id('sSupervisor').value, contractor:$id('sContractor').value,
+    manager:$id('sManager').value, startDate:$id('sStart').value, endDate:$id('sEnd').value};
+  if(editId){ const i=sites.findIndex(s=>s.id===editId); if(i>=0) sites[i]={...sites[i],...data}; }
+  else { data.id='site_'+Date.now(); sites.push(data); }
+  saveSites();
+  $id('ovSite').classList.remove('on');
+  renderHome();
+  toast(editId?'✅ 현장 정보 수정됨':'✅ 현장이 추가되었습니다');
+}
+function deleteSite(id){
+  const s=sites.find(x=>x.id===id);
+  if(!confirm(`"${s?.name}" 현장을 삭제하시겠습니까?\n일보도 모두 삭제됩니다.`)) return;
+  sites=sites.filter(x=>x.id!==id);
+  localStorage.removeItem(K_RPT(id));
+  saveSites(); renderHome();
+  toast('🗑 현장이 삭제되었습니다');
 }
 
-function closeHistoryModal(e) {
-  if (e.target === document.getElementById('historyModal')) {
-    document.getElementById('historyModal').classList.remove('active');
-  }
-}
+// ── ENTER SITE ──
+function enterSite(siteId){
+  curSiteId=siteId;
+  localStorage.setItem('gsa_last',siteId);
+  loadReports(siteId);
+  const s=curSite();
 
-function deleteReport(id) {
-  if (!confirm('이 일보를 삭제하시겠습니까?')) return;
-  reports = reports.filter(r => r.id !== id);
-  localStorage.setItem(STORE_KEY, JSON.stringify(reports));
-  document.getElementById('historyModal').classList.remove('active');
+  $id('hdrSiteName').textContent=s.name||'현장';
+  updateProjMeta(s);
+  showApp();
+  resetForm(s);
+  if($id('cfgEmail')&&settings.email) $id('cfgEmail').value=settings.email;
+  if($id('cfgCC')&&settings.emailCC) $id('cfgCC').value=settings.emailCC;
+  goTab('write', document.querySelector('.tab'));
   refreshHistory();
   refreshCumul();
-  showToast('🗑 일보가 삭제되었습니다');
 }
 
-// ======================================================
-// CUMUL REFRESH
-// ======================================================
-function refreshCumul() {
-  const skill = state.cumul.skill || 0;
-  const tech = state.cumul.tech || 0;
-  const labor = state.cumul.labor || 0;
-  const total = skill + tech + labor;
-  document.getElementById('cumulTotalWorker').textContent = total;
-  document.getElementById('cumulSkill').textContent = skill;
-  document.getElementById('cumulTech').textContent = tech;
-  document.getElementById('cumulLabor').textContent = labor;
-  document.getElementById('cumulDays').textContent = reports.length;
-  document.getElementById('cumulReports').textContent = reports.length + ' 건';
-
-  const lastReport = reports[0];
-  document.getElementById('cumulLastDate').textContent = lastReport ? lastReport.date : '-';
-
-  const photoTotal = reports.reduce((s,r) => s+(r.photoCount||0), 0);
-  document.getElementById('cumulPhotos').textContent = photoTotal + ' 장';
-
-  const lastProgress = lastReport ? parseInt(lastReport.progressCumul)||0 : 0;
-  document.getElementById('cumulProgressLabel').textContent = lastProgress + '%';
-  document.getElementById('cumulProgressFill').style.width = lastProgress + '%';
+function updateProjMeta(s){
+  $id('projName').textContent=s.name||'현장명';
+  $id('projDetail').textContent=[s.work,s.supervisor?'감독관: '+s.supervisor:''].filter(Boolean).join(' · ');
 }
 
-// ======================================================
-// PREVIEW
-// ======================================================
-function buildPreview() {
-  const r = collectReport();
-  const workerTotal = r.workers.reduce((s,w)=>s+w.skill+w.tech+w.labor,0);
-  const workerRows = r.workers.map(w =>
-    `<div class="summary-row"><span class="summary-label">${w.job||'직종'}</span>
-     <span class="summary-value">기술${w.skill}·기능${w.tech}·인부${w.labor}</span></div>`
-  ).join('');
-  document.getElementById('previewContent').innerHTML = `
-    <div class="summary-row"><span class="summary-label">현장명</span><span class="summary-value">${r.project.name||'-'}</span></div>
-    <div class="summary-row"><span class="summary-label">작성일</span><span class="summary-value">${r.date||'-'}</span></div>
-    <div class="summary-row"><span class="summary-label">날씨</span><span class="summary-value">${r.weatherAM||'-'} / ${r.weatherPM||'-'}</span></div>
-    <div class="summary-row"><span class="summary-label">기온</span><span class="summary-value">${r.tempMin||'-'}°C ~ ${r.tempMax||'-'}°C</span></div>
-    <div class="summary-row"><span class="summary-label">총 투입인원</span><span class="summary-value accent">${workerTotal}명</span></div>
-    ${workerRows}
-    <div class="summary-row"><span class="summary-label">장비</span><span class="summary-value">${r.equips.length}종</span></div>
-    <div class="summary-row"><span class="summary-label">공정율</span><span class="summary-value">${r.progressToday||0}% (누계 ${r.progressCumul||0}%)</span></div>
-    <div class="summary-row"><span class="summary-label">사진</span><span class="summary-value">${state.photos.length}장</span></div>
-  `;
+// ── PROJ MODAL (작성 화면 내 수정) ──
+function openProjModal(){
+  const s=curSite();
+  $id('pName').value=s.name||''; $id('pWork').value=s.work||'';
+  $id('pClient').value=s.client||''; $id('pSupervisor').value=s.supervisor||'';
+  $id('pContractor').value=s.contractor||''; $id('pManager').value=s.manager||'';
+  $id('pStart').value=s.startDate||''; $id('pEnd').value=s.endDate||'';
+  $id('ovProj').classList.add('on');
+}
+function closeProjModal(e){
+  if(!e||e.target===$id('ovProj')) $id('ovProj').classList.remove('on');
+}
+function saveProjEdit(){
+  if(!curSiteId) return;
+  const updated={name:$id('pName').value, work:$id('pWork').value,
+    client:$id('pClient').value, supervisor:$id('pSupervisor').value,
+    contractor:$id('pContractor').value, manager:$id('pManager').value,
+    startDate:$id('pStart').value, endDate:$id('pEnd').value};
+  const i=sites.findIndex(s=>s.id===curSiteId);
+  if(i>=0) sites[i]={...sites[i],...updated};
+  saveSites();
+  $id('hdrSiteName').textContent=updated.name||'현장';
+  updateProjMeta(updated);
+  $id('ovProj').classList.remove('on');
+  toast('✅ 현장 정보가 수정되었습니다');
 }
 
-// ======================================================
-// EXCEL EXPORT
-// ======================================================
-function exportExcel() {
-  const report = collectReport();
-  generateExcelFile(report, state.photos);
+// ── TABS ──
+function goTab(id, tabEl){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  if(tabEl) tabEl.classList.add('on');
+  $id('pg-'+id).classList.add('on');
+  if(id==='send') buildPreview();
+  if(id==='cumul') refreshCumul();
+  if(id==='hist') refreshHistory();
 }
 
-function exportExcelFromReport(id) {
-  const r = reports.find(x => x.id === id);
-  if (r) generateExcelFile(r, []);
+// ── RESET FORM ──
+function resetForm(s){
+  const n=new Date();
+  $id('rDate').value=n.toISOString().split('T')[0];
+  $id('rNo').value=String(reports.length+1).padStart(3,'0');
+  $id('rAuthor').value=''; $id('rTitle').value='';
+  wMain='';
+  document.querySelectorAll('.w-btn').forEach(b=>b.classList.remove('on'));
+  $id('tMin').value=''; $id('tMax').value='';
+  $id('wBody').innerHTML='';
+  $id('equipList').innerHTML=''; $id('matList').innerHTML=''; $id('workList').innerHTML='';
+  if($id('prgBadge')) $id('prgBadge').textContent='0%';
+  ['철근공','형틀목공','콘크리트공','일반작업'].forEach(n=>addWorker(n));
+  addEquip(); addMat(); addWork();
+  $id('rNote').value='';
+  photos=[]; renderPhotoGrid(); $id('photoNote').value='';
 }
 
-function generateExcelFile(report, photos) {
-  const wb = XLSX.utils.book_new();
-  const workerTotal = report.workers ? report.workers.reduce((s,w)=>s+w.skill+w.tech+w.labor,0) : 0;
+// ── WEATHER ──
+function selW(btn){
+  $id('wMain').querySelectorAll('.w-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  wMain=btn.textContent.trim();
+}
 
-  // ── 시트1: 공사일보 ──
-  const rows = [];
-  rows.push(['공 사 일 보']);
-  rows.push([]);
-  rows.push(['현장명', report.project?.name||'', '', '공사명', report.project?.work||'']);
-  rows.push(['발주처', report.project?.client||'', '', '감독관', report.project?.supervisor||'']);
-  rows.push(['시공사', report.project?.contractor||'', '', '현장소장', report.project?.manager||'']);
-  rows.push([]);
-  rows.push(['작성일', report.date||'', '일보 No.', report.no||'', '작성자', (report.author||'')+(report.authorTitle?' ('+report.authorTitle+')':'')]);
-  rows.push([]);
-  rows.push(['【날씨 및 기온】']);
-  rows.push(['오전 날씨', report.weatherAM||'', '오후 날씨', report.weatherPM||'', '최저기온', (report.tempMin||'')+'°C', '최고기온', (report.tempMax||'')+'°C']);
-  rows.push([]);
-  rows.push(['【작업인원】']);
-  rows.push(['직종', '기술자', '기능공', '보통인부', '소계']);
-  (report.workers||[]).forEach(w => {
-    rows.push([w.job||'', w.skill||0, w.tech||0, w.labor||0, (w.skill||0)+(w.tech||0)+(w.labor||0)]);
+// ── WORKER ──
+function addWorker(name=''){
+  const tbody=$id('wBody');
+  const tr=document.createElement('tr');
+  const ni=(ph)=>`<td><input type="number" value="0" min="0" placeholder="${ph}" style="width:100%;padding:3px 1px;text-align:center;border:1px solid var(--border);border-radius:3px;font-size:11px;background:#fff;font-family:inherit" oninput="calcW()"></td>`;
+  tr.innerHTML=`
+    <td style="min-width:58px"><input type="text" value="${name}" placeholder="직종" style="width:100%;padding:4px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:#fff;font-family:inherit"></td>
+    ${ni('관리자')}
+    ${ni('근로자')}
+    ${ni('화기')}${ni('신호')}${ni('유도')}
+    <td><input type="number" value="0" min="0" placeholder="목표" style="width:100%;padding:3px 1px;text-align:center;border:1.5px solid var(--navy);border-radius:3px;font-size:11px;background:#f0f4ff;font-family:inherit;font-weight:700" oninput="calcW()"></td>
+    <td style="font-weight:700;color:var(--orange);text-align:center;font-size:12px;white-space:nowrap" class="w-sub">0</td>
+    <td style="text-align:center;font-size:11px;font-weight:700;white-space:nowrap" class="w-pct">-</td>
+    <td><button class="rm-btn" onclick="rmRow(this)" style="padding:3px 5px;font-size:11px">✕</button></td>`;
+  tbody.appendChild(tr); calcW();
+}
+
+function calcW(){
+  // 입력 순서: [0]=직종명, [1]=관리자, [2]=근로자, [3]=화기, [4]=신호, [5]=유도, [6]=투입총계
+  const totals=Array(5).fill(0);
+  let totalSub=0, totalTarget=0;
+  $id('wBody').querySelectorAll('tr').forEach(tr=>{
+    const inp=tr.querySelectorAll('input[type=number]');
+    let sub=0;
+    for(let i=0;i<5;i++){ const v=parseInt(inp[i]?.value)||0; totals[i]+=v; sub+=v; }
+    const target=parseInt(inp[5]?.value)||0;
+    const pct=target>0?Math.min(Math.round(sub/target*100),100):null;
+    const subCell=tr.querySelector('.w-sub');
+    const pctCell=tr.querySelector('.w-pct');
+    if(subCell) subCell.textContent=sub;
+    if(pctCell){
+      pctCell.textContent=pct!==null?pct+'%':'-';
+      pctCell.style.color=pct!==null?(pct>=100?'#16a34a':pct>=50?'var(--navy)':'var(--gray)'):'var(--gray)';
+    }
+    totalSub+=sub; totalTarget+=target;
   });
-  rows.push(['합계', '', '', '', workerTotal]);
-  rows.push([]);
-  rows.push(['【장비 투입 현황】']);
-  rows.push(['장비명', '대수', '작업내용']);
-  (report.equips||[]).forEach(e => rows.push([e.name||'', e.qty||'', e.desc||'']));
-  rows.push([]);
-  rows.push(['【작업 내용 / 공종】']);
-  (report.works||[]).forEach((w,i) => rows.push([i+1, w]));
-  rows.push([]);
-  rows.push(['【공정율】']);
-  rows.push(['금일 공정율', (report.progressToday||0)+'%', '누계 공정율', (report.progressCumul||0)+'%']);
-  rows.push([]);
-  rows.push(['【특이사항 / 조치내용】']);
-  rows.push([report.specialNote||'해당없음']);
+  totals.forEach((v,i)=>{ const el=$id('f'+i); if(el) el.textContent=v; });
+  if($id('fTarget')) $id('fTarget').textContent=totalTarget;
+  if($id('fAll')) $id('fAll').textContent=totalSub;
+  const pct=totalTarget>0?Math.min(Math.round(totalSub/totalTarget*100),100):0;
+  if($id('prgBadge')){
+    $id('prgBadge').textContent=pct+'%';
+    $id('prgBadge').style.background=pct>=100?'#16a34a':pct>=50?'var(--navy)':'var(--orange)';
+  }
+  if($id('fPct')) $id('fPct').textContent=pct+'%';
+}
+function addEquip(){
+  const list=$id('equipList'), idx=list.children.length+1;
+  const d=document.createElement('div'); d.className='erow';
+  d.innerHTML=`<div class="enum">${idx}</div>
+    <input type="text" placeholder="장비명 (예: 굴착기 0.6㎥)" style="flex:2">
+    <input type="number" placeholder="대수" min="1" value="1" style="flex:.7;text-align:center">
+    <input type="text" placeholder="작업내용" style="flex:2">
+    <button class="rm-btn" onclick="rmRow(this)">✕</button>`;
+  list.appendChild(d);
+}
 
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [
-    {wch:20},{wch:16},{wch:14},{wch:16},{wch:14},{wch:12},{wch:12},{wch:12}
+// ── MATERIAL ──
+function addMat(){
+  const list=$id('matList'), idx=list.children.length+1;
+  const d=document.createElement('div'); d.className='erow';
+  d.innerHTML=`<div class="enum">${idx}</div>
+    <input type="text" placeholder="자재명" style="flex:2">
+    <input type="text" placeholder="규격" style="flex:1.2">
+    <input type="number" placeholder="수량" min="0" style="flex:.8;text-align:center">
+    <input type="text" placeholder="단위(ton,m³)" style="flex:1">
+    <button class="rm-btn" onclick="rmRow(this)">✕</button>`;
+  list.appendChild(d);
+}
+
+// ── WORK ──
+function addWork(){
+  const list=$id('workList'), idx=list.children.length+1;
+  const d=document.createElement('div'); d.className='witem';
+  d.innerHTML=`<div class="wnum">${idx}</div>
+    <textarea placeholder="공종 및 작업내용..." rows="2" style="flex:1;min-height:58px"></textarea>
+    <button class="rm-btn" onclick="rmRow(this)" style="margin-top:7px">✕</button>`;
+  list.appendChild(d);
+}
+function rmRow(btn){ btn.parentElement.remove(); calcW(); }
+
+// ── 사진 압축 (canvas 리사이즈, 800px JPEG 0.78) ──
+function compressPhoto(file){
+  return new Promise(res=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const MAX=800;
+      let w=img.width, h=img.height;
+      if(w>MAX||h>MAX){
+        if(w>h){h=Math.round(h*MAX/w);w=MAX;}
+        else{w=Math.round(w*MAX/h);h=MAX;}
+      }
+      const cv=document.createElement('canvas');
+      cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      res(cv.toDataURL('image/jpeg',0.78));
+    };
+    img.onerror=()=>{
+      const fr=new FileReader();
+      fr.onload=ev=>res(ev.target.result);
+      fr.readAsDataURL(file);
+    };
+    img.src=url;
+  });
+}
+
+// ── PHOTOS ──
+async function addPhotos(e){
+  const files=Array.from(e.target.files);
+  for(const f of files){
+    const dataUrl=await compressPhoto(f);
+    photos.push({dataUrl, caption:''});
+  }
+  renderPhotoGrid();
+  e.target.value='';
+}
+function renderPhotoGrid(){
+  const grid=$id('photoGrid'),empty=$id('photoEmpty'),badge=$id('photoBadge'),delAll=$id('photoDelAll');
+  grid.innerHTML='';
+  if(!photos.length){
+    empty.style.display='block'; badge.style.display='none';
+    if(delAll) delAll.style.display='none'; return;
+  }
+  empty.style.display='none'; badge.style.display='block';
+  if(delAll) delAll.style.display='block';
+  $id('photoCnt').textContent=photos.length;
+  photos.forEach((p,i)=>{
+    const d=document.createElement('div'); d.className='pitem';
+    d.innerHTML=`<img src="${p.dataUrl}" loading="lazy">
+      <input class="pcap" type="text" placeholder="설명..." value="${p.caption||''}" oninput="photos[${i}].caption=this.value">
+      <button class="pdel" onclick="photos.splice(${i},1);renderPhotoGrid()">✕</button>`;
+    grid.appendChild(d);
+  });
+}
+function clearPhotos(){
+  if(!confirm('사진을 모두 삭제하시겠습니까?')) return;
+  photos=[]; renderPhotoGrid(); toast('🗑 사진이 모두 삭제되었습니다');
+}
+
+// ── COLLECT REPORT ──
+function collectReport(){
+  const workers=[];
+  $id('wBody').querySelectorAll('tr').forEach(tr=>{
+    const inp=tr.querySelectorAll('input');
+    // inp[0]=직종명, inp[1]=관리자, inp[2]=근로자, inp[3]=화기, inp[4]=신호, inp[5]=유도, inp[6]=투입총계
+    const job=inp[0]?.value||'';
+    const mgr=parseInt(inp[1]?.value)||0;
+    const emp=parseInt(inp[2]?.value)||0;
+    const hwa=[parseInt(inp[3]?.value)||0, parseInt(inp[4]?.value)||0, parseInt(inp[5]?.value)||0];
+    const target=parseInt(inp[6]?.value)||0;
+    const sub=mgr+emp+hwa.reduce((a,b)=>a+b,0);
+    const pct=target>0?Math.min(Math.round(sub/target*100),100):0;
+    workers.push({job, mgr, emp, hwa, target, sub, pct});
+  });
+  const equips=[];
+  $id('equipList').querySelectorAll('.erow').forEach(row=>{
+    const inp=row.querySelectorAll('input');
+    equips.push({name:inp[0]?.value||'',qty:parseInt(inp[1]?.value)||0,desc:inp[2]?.value||''});
+  });
+  const materials=[];
+  $id('matList').querySelectorAll('.erow').forEach(row=>{
+    const inp=row.querySelectorAll('input');
+    if(inp[0]?.value.trim()) materials.push({name:inp[0].value,spec:inp[1]?.value||'',qty:parseFloat(inp[2]?.value)||0,unit:inp[3]?.value||''});
+  });
+  const works=[];
+  $id('workList').querySelectorAll('textarea').forEach(ta=>{ if(ta.value.trim()) works.push(ta.value.trim()); });
+  const totalSub=workers.reduce((s,w)=>s+w.sub,0);
+  const totalTarget=workers.reduce((s,w)=>s+w.target,0);
+  const totalPct=totalTarget>0?Math.min(Math.round(totalSub/totalTarget*100),100):0;
+  return{
+    id:Date.now(), date:$id('rDate').value, no:$id('rNo').value,
+    author:$id('rAuthor').value, authorTitle:$id('rTitle').value,
+    weather:wMain, tempMin:$id('tMin').value, tempMax:$id('tMax').value,
+    workers, equips, materials, works,
+    totalSub, totalTarget, totalPct,
+    specialNote:$id('rNote').value, photoNote:$id('photoNote').value,
+    photoCount:photos.length,
+    photos:photos.map(p=>({caption:p.caption})),
+    project:{...curSite()}
+  };
+}
+
+// ── SAVE REPORT ──
+function saveReport(){
+  if(!curSiteId){toast('❗ 현장을 먼저 선택해주세요'); return;}
+  const r=collectReport();
+  // 사진 dataUrl 포함해서 저장 (압축됐으므로 ~80~120KB/장)
+  r.photos=photos.map(p=>({dataUrl:p.dataUrl, caption:p.caption}));
+  r.photoCount=photos.length;
+  const i=reports.findIndex(x=>x.date===r.date&&x.no===r.no);
+  if(i>=0) reports[i]=r; else reports.unshift(r);
+  try{
+    saveReports();
+    toast('💾 일보가 저장되었습니다');
+  } catch(e){
+    // LocalStorage 용량 초과 시 사진 제외 후 재시도
+    r.photos=photos.map(p=>({caption:p.caption}));
+    saveReports();
+    toast('⚠️ 사진 용량 초과 — 텍스트만 저장됐습니다');
+  }
+  refreshHistory(); refreshCumul();
+}
+
+// ── SETTINGS ──
+function saveSettings(){
+  settings.email=$id('cfgEmail').value;
+  settings.emailCC=$id('cfgCC').value;
+  localStorage.setItem(K_SETTINGS,JSON.stringify(settings));
+}
+
+// ── HISTORY ──
+function refreshHistory(){
+  const list=$id('histList'), empty=$id('histEmpty'), ctrl=$id('histCtrl');
+  list.innerHTML='';
+  if(!reports.length){
+    empty.style.display='block';
+    if(ctrl) ctrl.style.display='none';
+    return;
+  }
+  empty.style.display='none';
+  if(ctrl){ ctrl.style.display='flex'; $id('histCnt').textContent=reports.length; }
+  reports.forEach(r=>{
+    const d=new Date(r.date); const mon=(d.getMonth()+1)+'월'; const day=d.getDate();
+    const wt=r.totalSub||(r.workers||[]).reduce((s,w)=>s+(w.sub||w.skill||0)+(w.tech||0)+(w.labor||0),0);
+    const pct=r.totalPct||(r.progressCumul||0);
+    const div=document.createElement('div');
+    div.className='hist-item';
+    div.style.position='relative';
+    div.innerHTML=`
+      <div class="hist-badge"><div class="hist-day">${day}</div><div class="hist-mon">${mon}</div></div>
+      <div class="hist-info">
+        <div class="hist-title">No.${r.no||'-'} · ${r.author||'작성자 미입력'}</div>
+        <div class="hist-sub">👷 ${wt}명 · 📷 ${r.photoCount||0}장 · ${r.weather||r.weatherAM||'-'}</div>
+      </div>
+      <div class="hist-pct">${pct}%</div>
+      <button onclick="event.stopPropagation();deleteReport(${r.id})"
+        style="position:absolute;top:8px;right:8px;background:#fee2e2;border:none;color:#dc2626;
+               width:24px;height:24px;border-radius:50%;font-size:13px;cursor:pointer;
+               display:flex;align-items:center;justify-content:center;line-height:1">✕</button>`;
+    div.onclick=()=>openHistDetail(r);
+    list.appendChild(div);
+  });
+}
+
+function openHistDetail(r){
+  const wt=r.totalSub||(r.workers||[]).reduce((s,w)=>s+(w.sub||0),0);
+  const pct=r.totalPct||(r.progressCumul||0);
+  const wRows=(r.workers||[]).filter(w=>w.job).map(w=>`<div class="srow"><span class="slabel">${w.job}</span><span class="sval">${w.sub||0}명 · 목표${w.target||0} · ${w.pct||0}%</span></div>`).join('');
+  const eRows=(r.equips||[]).map(e=>`<div class="srow"><span class="slabel">${e.name}</span><span class="sval">${e.qty}대</span></div>`).join('');
+  const mRows=(r.materials||[]).map(m=>`<div class="srow"><span class="slabel">${m.name} ${m.spec||''}</span><span class="sval">${m.qty} ${m.unit||''}</span></div>`).join('');
+  $id('histModalContent').innerHTML=`
+    <div class="mhandle"></div>
+    <div class="mtitle">📋 ${r.date} 일보 (No.${r.no||'-'})</div>
+    <div class="srow"><span class="slabel">날씨</span><span class="sval">${r.weather||r.weatherAM||'-'} / ${r.tempMin||'-'}°C ~ ${r.tempMax||'-'}°C</span></div>
+    <div class="srow"><span class="slabel">총 투입인원</span><span class="sval" style="color:var(--orange)">${wt}명 / 목표 ${r.totalTarget||0}명</span></div>
+    <div class="srow"><span class="slabel">전체 공정율</span><span class="sval" style="color:#065f46;font-weight:900;font-size:15px">${pct}%</span></div>
+    ${wRows}
+    ${eRows?`<div style="font-size:11px;font-weight:700;color:var(--navy);margin:8px 0 4px">🚜 장비</div>${eRows}`:''}
+    ${mRows?`<div style="font-size:11px;font-weight:700;color:var(--navy);margin:8px 0 4px">📦 자재</div>${mRows}`:''}
+    <div class="srow"><span class="slabel">사진</span><span class="sval">${r.photoCount||0}장
+      ${r.photos&&r.photos.length&&r.photos[0].dataUrl?`<button onclick="viewHistPhotos(${r.id})" style="margin-left:8px;background:#f0f4ff;border:none;color:var(--navy);border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">보기</button>`:''}
+    </span></div>
+    ${r.specialNote?`<div style="font-size:11px;color:var(--gray);margin-top:8px;padding:8px;background:#f8f9fc;border-radius:6px">${r.specialNote}</div>`:''}
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button onclick="exportExcelById(${r.id})" style="flex:1;padding:11px;background:var(--orange);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📊 엑셀</button>
+      <button onclick="deleteReport(${r.id})" style="padding:11px 14px;background:#fee2e2;color:#dc2626;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 삭제</button>
+    </div>`;
+  $id('ovHist').classList.add('on');
+}
+function closeHistModal(e){ if(!e||e.target===$id('ovHist')) $id('ovHist').classList.remove('on'); }
+
+function viewHistPhotos(reportId){
+  const r=reports.find(x=>x.id===reportId);
+  const photoData=r&&r.photos&&r.photos.filter(p=>p.dataUrl);
+  if(!photoData||!photoData.length){ toast('저장된 사진이 없습니다'); return; }
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;overflow-y:auto;padding:16px';
+  modal.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="color:#fff;font-size:14px;font-weight:700">📷 사진 ${photoData.length}장</div>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${photoData.map(p=>`
+        <div style="border-radius:10px;overflow:hidden;background:#222">
+          <img src="${p.dataUrl}" style="width:100%;display:block;object-fit:cover;aspect-ratio:1" loading="lazy">
+          ${p.caption?`<div style="padding:5px 8px;font-size:10px;color:#ccc;background:#111">${p.caption}</div>`:''}
+        </div>`).join('')}
+    </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+function deleteReport(id){
+  if(!confirm('이 일보를 삭제하시겠습니까?')) return;
+  reports=reports.filter(r=>r.id!==id);
+  saveReports(); $id('ovHist').classList.remove('on');
+  refreshHistory(); refreshCumul(); toast('🗑 일보가 삭제되었습니다');
+}
+function deleteAllReports(){
+  if(!confirm(`저장된 일보 ${reports.length}건을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+  reports=[];
+  saveReports(); refreshHistory(); refreshCumul();
+  toast('🗑 전체 일보가 삭제되었습니다');
+}
+
+// ── CUMUL ──
+function refreshCumul(){
+  let totalSub=0, totalTarget=0;
+  const workerMap={}, matRows=[], equipMap={};
+  [...reports].reverse().forEach(r=>{
+    totalSub+=(r.totalSub||0); totalTarget+=(r.totalTarget||0);
+    (r.workers||[]).forEach(w=>{
+      if(w.job){
+        if(!workerMap[w.job]) workerMap[w.job]={sub:0,target:0};
+        workerMap[w.job].sub+=w.sub||0;
+        workerMap[w.job].target+=w.target||0;
+      }
+    });
+    (r.materials||[]).forEach(m=>{ if(m.name) matRows.push({date:r.date||'',name:m.name,spec:m.spec||'',qty:m.qty||0,unit:m.unit||''}); });
+    (r.equips||[]).forEach(e=>{
+      if(!e.name) return;
+      if(!equipMap[e.name]) equipMap[e.name]={totalQty:0,days:0};
+      equipMap[e.name].totalQty+=parseInt(e.qty)||0; equipMap[e.name].days+=1;
+    });
+  });
+  const totalPct=totalTarget>0?Math.min(Math.round(totalSub/totalTarget*100),100):0;
+  const pct=totalPct;
+  $id('cTotal').textContent=totalSub; $id('cTotal2').textContent=reports.length;
+  $id('cSkill').textContent=totalSub;
+  $id('cTech').textContent=totalTarget;
+  $id('cLabor').textContent=pct+'%';
+  $id('cDays').textContent=reports.length;
+  $id('cReports').textContent=reports.length;
+  const last=reports[0];
+  $id('cLastDate').textContent=last?last.date:'-';
+  $id('cPhotos').textContent=reports.reduce((s,r)=>s+(r.photoCount||0),0);
+  $id('cPrgLabel').textContent=pct+'%'; $id('cPrgFill').style.width=pct+'%';
+
+  // 👷 직종별 누계
+  const wkeys=Object.keys(workerMap);
+  $id('cWorkerTbl').innerHTML=!wkeys.length?'<div style="color:var(--gray);font-size:11px;text-align:center;padding:8px">없음</div>':`
+    <table class="dtbl"><thead><tr><th>직종</th><th>누계인원</th><th>목표합계</th><th>공정율</th></tr></thead><tbody>
+    ${wkeys.map(j=>{const w=workerMap[j];const p=w.target>0?Math.min(Math.round(w.sub/w.target*100),100):'-';return`<tr><td style="font-weight:700">${j}</td><td style="font-weight:700;color:var(--orange)">${w.sub}</td><td>${w.target}</td><td style="font-weight:700;color:#065f46">${p!=='-'?p+'%':'-'}</td></tr>`;}).join('')}
+    <tr class="total-row"><td>합계</td><td style="color:var(--orange)">${totalSub}</td><td>${totalTarget}</td><td style="color:#065f46">${pct}%</td></tr>
+    </tbody></table>`;
+
+  // 📦 자재
+  const matSumMap={};
+  matRows.forEach(m=>{
+    const k=m.name+(m.spec?'||'+m.spec:'');
+    if(!matSumMap[k]) matSumMap[k]={name:m.name,spec:m.spec,unit:m.unit,totalQty:0,count:0};
+    matSumMap[k].totalQty+=parseFloat(m.qty)||0; matSumMap[k].count+=1;
+  });
+  const mkeys=Object.keys(matSumMap);
+  $id('cMatItems').textContent=mkeys.length; $id('cMatCount').textContent=matRows.length;
+  $id('cMatSumTbl').innerHTML=!mkeys.length?'<div style="color:var(--gray);font-size:11px;text-align:center;padding:8px">없음</div>':`
+    <table class="dtbl"><thead><tr><th>자재명</th><th>규격</th><th>누계수량</th><th>단위</th><th>횟수</th></tr></thead><tbody>
+    ${mkeys.map((k,i)=>{const m=matSumMap[k];return`<tr><td style="font-weight:700">${m.name}</td><td style="font-size:10px;color:var(--gray)">${m.spec||'-'}</td><td style="font-weight:700;color:var(--orange)">${m.totalQty.toLocaleString()}</td><td>${m.unit||'-'}</td><td>${m.count}회</td></tr>`;}).join('')}
+    </tbody></table>`;
+  $id('cMatDetailTbl').innerHTML=!matRows.length?'<div style="color:var(--gray);font-size:11px;text-align:center;padding:8px">없음</div>':`
+    <table class="dtbl"><thead><tr><th>날짜</th><th>자재명</th><th>규격</th><th>수량</th><th>단위</th></tr></thead><tbody>
+    ${matRows.map(m=>`<tr><td style="font-size:10px;color:var(--gray);white-space:nowrap">${m.date}</td><td style="font-weight:700">${m.name}</td><td style="font-size:10px">${m.spec||'-'}</td><td style="font-weight:700;color:var(--orange)">${parseFloat(m.qty).toLocaleString()}</td><td>${m.unit||'-'}</td></tr>`).join('')}
+    </tbody></table>`;
+
+  // 🚜 장비
+  const ekeys=Object.keys(equipMap);
+  const eTotal=ekeys.reduce((s,k)=>s+equipMap[k].totalQty,0);
+  $id('cEqTypes').textContent=ekeys.length; $id('cEqTotal').textContent=eTotal;
+  $id('cEqTbl').innerHTML=!ekeys.length?'<div style="color:var(--gray);font-size:11px;text-align:center;padding:8px">없음</div>':`
+    <table class="dtbl"><thead><tr><th>장비명</th><th>투입대수</th><th>사용일수</th></tr></thead><tbody>
+    ${ekeys.map((k,i)=>{const e=equipMap[k];return`<tr><td style="font-weight:700">${k}</td><td style="font-weight:700;color:var(--orange)">${e.totalQty}대</td><td>${e.days}일</td></tr>`;}).join('')}
+    </tbody></table>`;
+}
+
+// ── PREVIEW ──
+function buildPreview(){
+  const r=collectReport();
+  $id('previewBody').innerHTML=`
+    <div class="srow"><span class="slabel">현장명</span><span class="sval">${r.project?.name||'-'}</span></div>
+    <div class="srow"><span class="slabel">작성일</span><span class="sval">${r.date||'-'} (No.${r.no||'-'})</span></div>
+    <div class="srow"><span class="slabel">날씨</span><span class="sval">${r.weather||'-'} / ${r.tempMin||'-'}°C ~ ${r.tempMax||'-'}°C</span></div>
+    <div class="srow"><span class="slabel">총 투입인원</span><span class="sval" style="color:var(--orange)">${r.totalSub}명 / 목표 ${r.totalTarget}명</span></div>
+    <div class="srow"><span class="slabel">전체 공정율</span><span class="sval" style="color:#065f46;font-size:15px">${r.totalPct}%</span></div>
+    ${r.workers.filter(w=>w.job).map(w=>`<div class="srow"><span class="slabel">${w.job}</span><span class="sval">${w.sub}명 (목표${w.target}) · ${w.pct}%</span></div>`).join('')}
+    <div class="srow"><span class="slabel">장비</span><span class="sval">${r.equips.length}종</span></div>
+    <div class="srow"><span class="slabel">자재입고</span><span class="sval">${r.materials.length?r.materials.length+'종':'-'}</span></div>
+    <div class="srow"><span class="slabel">사진</span><span class="sval">${photos.length}장</span></div>`;
+}
+
+// ── EXCEL (예시 양식 + 사진 자동 삽입) ──
+function exportExcel(){ generateExcel(collectReport(), photos); }
+function exportExcelById(id){
+  const r=reports.find(x=>x.id===id);
+  if(!r) return;
+  generateExcel(r, (r.photos||[]).filter(p=>p.dataUrl));
+}
+
+async function generateExcel(report, photoArr){
+  if(!window.ExcelJS){ toast('❗ 잠시 후 다시 시도해주세요'); return; }
+  toast('⏳ 엑셀 생성 중...');
+
+  const wb = new ExcelJS.Workbook();
+  const proj = report.project||{};
+  const photoList = photoArr&&photoArr.length ? photoArr : (report.photos||[]).filter(p=>p.dataUrl);
+
+  // ── 공통 스타일 헬퍼 ──
+  const NAVY   = 'FF1A2744';
+  const LGRAY  = 'FFD9D9D9';
+  const YELLOW = 'FFFFFF00';
+  const WHITE  = 'FFFFFFFF';
+  const DGRAY  = 'FF595959';
+
+  const border1 = {
+    top:{style:'thin'},bottom:{style:'thin'},
+    left:{style:'thin'},right:{style:'thin'}
+  };
+  const borderMed = {
+    top:{style:'medium'},bottom:{style:'medium'},
+    left:{style:'medium'},right:{style:'medium'}
+  };
+
+  function styleCell(cell, opts={}){
+    if(opts.bold!==undefined||opts.size||opts.color||opts.fontColor){
+      cell.font = {
+        name:'맑은 고딕',
+        bold:opts.bold||false,
+        size:opts.size||9,
+        color:{argb: opts.fontColor||'FF000000'}
+      };
+    } else {
+      cell.font = {name:'맑은 고딕', size:opts.size||9};
+    }
+    if(opts.bg){
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:opts.bg}};
+    }
+    cell.alignment={
+      horizontal:opts.h||'left',
+      vertical:opts.v||'center',
+      wrapText:opts.wrap!==false
+    };
+    if(opts.border) cell.border=border1;
+    if(opts.borderMed) cell.border=borderMed;
+  }
+
+  function secHeader(ws, rowNum, text){
+    const row=ws.getRow(rowNum);
+    row.height=16;
+    const cell=row.getCell(1);
+    cell.value=text;
+    styleCell(cell,{bold:true,size:9,bg:NAVY,fontColor:WHITE,h:'left',border:true});
+    return row;
+  }
+
+  // ══════════════════════════════════
+  // 페이지1: 공사일보 (행 1~72)
+  // ══════════════════════════════════
+  const ws = wb.addWorksheet('공사일보');
+
+  // 열 너비 (A~P, 16열)
+  const colWidths=[5.8,4,5,5,3,3,5,3,5,3,5,3,4,4,4,4];
+  colWidths.forEach((w,i)=>{ ws.getColumn(i+1).width=w; });
+
+  // ── 행1: 제목 헤더 ──
+  ws.mergeCells('A1:F1'); ws.mergeCells('G1:H1');
+  ws.mergeCells('K1:M1'); ws.mergeCells('N1:P1');
+  ws.getRow(1).height=5;
+
+  // ── 행2~4: 공사일보 타이틀 ──
+  ws.mergeCells('A2:F4');
+  ws.mergeCells('G2:J4');
+  ws.mergeCells('K2:M2'); ws.mergeCells('N2:P2');
+  ws.mergeCells('K3:L4'); ws.mergeCells('M3:M4');
+  ws.mergeCells('N3:O4'); ws.mergeCells('P3:P4');
+
+  const titleCell = ws.getCell('A2');
+  titleCell.value = '공  사  일  보';
+  styleCell(titleCell,{bold:true,size:22,bg:LGRAY,h:'center',v:'center'});
+  titleCell.border=border1;
+
+  const ws_cell = ws.getCell('K2');
+  ws_cell.value = '작  성';
+  styleCell(ws_cell,{bold:true,size:9,bg:LGRAY,h:'center',border:true});
+
+  const cn_cell = ws.getCell('N2');
+  cn_cell.value = '확   인';
+  styleCell(cn_cell,{bold:true,size:9,bg:LGRAY,h:'center',border:true});
+
+  ws.getCell('K3').value = report.author||'';
+  styleCell(ws.getCell('K3'),{h:'center',size:9,bg:WHITE,border:true});
+  ws.getCell('M3').value = '(인)';
+  styleCell(ws.getCell('M3'),{h:'center',size:9,border:true});
+  ws.getCell('P3').value = '(인)';
+  styleCell(ws.getCell('P3'),{h:'center',size:9,border:true});
+
+  [2,3,4].forEach(r=>{ ws.getRow(r).height = r===2?14:18; });
+
+  // ── 행5: 여백 ──
+  ws.getRow(5).height=4;
+
+  // ── 행6~8: 현장정보 ──
+  const infoRows=[
+    [6,'공 사 명',proj.work||'','날    씨',report.weather||'','작업일자',report.date||''],
+    [7,'공사현장',proj.name||'','발 주 처',proj.client||''],
+    [8,'공사기간',(proj.startDate&&proj.endDate)?proj.startDate+' ~ '+proj.endDate:'','공사업체',proj.contractor||'']
   ];
 
-  XLSX.utils.book_append_sheet(wb, ws, '공사일보');
+  ws.mergeCells('A6:B6'); ws.mergeCells('C6:H6');
+  ws.mergeCells('I6:J6'); ws.mergeCells('K6:L6');
+  ws.mergeCells('M6:M6'); ws.mergeCells('O6:P6');
+  ws.mergeCells('A7:B7'); ws.mergeCells('C7:H7');
+  ws.mergeCells('I7:J7'); ws.mergeCells('K7:P7');
+  ws.mergeCells('A8:B8'); ws.mergeCells('C8:H8');
+  ws.mergeCells('I8:J8'); ws.mergeCells('K8:P8');
 
-  // ── 시트2: 사진대지 ──
-  const photoRows = [];
-  photoRows.push(['사진 대지']);
-  photoRows.push(['작성일', report.date||'', '현장명', report.project?.name||'']);
-  photoRows.push([]);
-  if (photos && photos.length > 0) {
-    photos.forEach((p, i) => {
-      photoRows.push([`사진 ${i+1}`, p.caption || '(설명 없음)']);
-    });
-  } else if (report.photoCount) {
-    photoRows.push([`업로드된 사진 ${report.photoCount}장`]);
-  } else {
-    photoRows.push(['업로드된 사진 없음']);
-  }
-  const ws2 = XLSX.utils.aoa_to_sheet(photoRows);
-  XLSX.utils.book_append_sheet(wb, ws2, '사진대지');
+  // 행6
+  ws.getCell('A6').value='공 사 명'; styleCell(ws.getCell('A6'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('C6').value=proj.work||''; styleCell(ws.getCell('C6'),{size:8,border:true,h:'left'});
+  ws.getCell('I6').value='날    씨'; styleCell(ws.getCell('I6'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('K6').value=(report.weather||'')+(report.tempMin?' / '+report.tempMin+'°C~'+report.tempMax+'°C':''); styleCell(ws.getCell('K6'),{size:8,border:true,h:'center'});
+  ws.getCell('M6').value='작업일자'; styleCell(ws.getCell('M6'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('N6').value=''; ws.mergeCells('N6:N6');
+  ws.getCell('O6').value=report.date||''; styleCell(ws.getCell('O6'),{size:8,border:true,h:'center'});
+  // 행7
+  ws.getCell('A7').value='공사현장'; styleCell(ws.getCell('A7'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('C7').value=proj.name||''; styleCell(ws.getCell('C7'),{size:8,border:true});
+  ws.getCell('I7').value='발 주 처'; styleCell(ws.getCell('I7'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('K7').value=proj.client||''; styleCell(ws.getCell('K7'),{size:8,border:true});
+  // 행8
+  ws.getCell('A8').value='공사기간'; styleCell(ws.getCell('A8'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('C8').value=(proj.startDate&&proj.endDate)?proj.startDate+' ~ '+proj.endDate:''; styleCell(ws.getCell('C8'),{size:8,border:true});
+  ws.getCell('I8').value='공사업체'; styleCell(ws.getCell('I8'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('K8').value=proj.contractor||''; styleCell(ws.getCell('K8'),{size:8,border:true});
+  [6,7,8].forEach(r=>ws.getRow(r).height=13);
 
-  // ── 시트3: 누계 ──
-  const cumulRows = [];
-  cumulRows.push(['누계 현황']);
-  cumulRows.push([]);
-  cumulRows.push(['총 저장 일보', reports.length+'건']);
-  cumulRows.push(['누계 기술자', state.cumul.skill+'명']);
-  cumulRows.push(['누계 기능공', state.cumul.tech+'명']);
-  cumulRows.push(['누계 보통인부', state.cumul.labor+'명']);
-  cumulRows.push(['누계 총 인원', (state.cumul.skill+state.cumul.tech+state.cumul.labor)+'명']);
-  const ws3 = XLSX.utils.aoa_to_sheet(cumulRows);
-  XLSX.utils.book_append_sheet(wb, ws3, '누계');
+  // ── 섹션1: 작업지시 ──
+  ws.mergeCells('A9:P9');
+  secHeader(ws,9,'1. 작업지시 및 안전/환경관련 지시사항');
+  ws.mergeCells('A10:H10'); ws.mergeCells('I10:P10');
+  ws.getCell('A10').value='작 업 지 시'; styleCell(ws.getCell('A10'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('I10').value='안전/환경관련 지시사항'; styleCell(ws.getCell('I10'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getRow(10).height=13;
+  // 작업지시 내용 영역
+  ws.mergeCells('A11:H15'); ws.mergeCells('I11:P15');
+  ws.getCell('A11').value=''; ws.getCell('A11').border=border1;
+  ws.getCell('I11').value=''; ws.getCell('I11').border=border1;
+  [11,12,13,14,15].forEach(r=>ws.getRow(r).height=13);
 
-  const fileName = `공사일보_${report.date||'미정'}_No${report.no||'0'}.xlsx`;
-  XLSX.writeFile(wb, fileName);
-  showToast('📊 엑셀 파일이 다운로드되었습니다');
-}
+  // ── 섹션2: 작업내용 ──
+  ws.mergeCells('A16:P16');
+  secHeader(ws,16,'2. 작 업 내 용');
+  ws.mergeCells('A17:H17'); ws.mergeCells('I17:P17');
+  ws.getCell('A17').value='금 일 작 업 내 용'; styleCell(ws.getCell('A17'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('I17').value='명 일 작 업 내 용'; styleCell(ws.getCell('I17'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getRow(17).height=13;
+  ws.mergeCells('A18:H48'); ws.mergeCells('I18:P48');
+  const todayWork = (report.works||[]).map((w,i)=>(i+1)+'. '+w).join('\n');
+  ws.getCell('A18').value = todayWork||'';
+  styleCell(ws.getCell('A18'),{size:8,border:true,v:'top',wrap:true});
+  ws.getCell('I18').value = '';
+  styleCell(ws.getCell('I18'),{size:8,border:true,v:'top',wrap:true});
+  for(let r=18;r<=48;r++) ws.getRow(r).height=10.9;
 
-// ======================================================
-// SHARE
-// ======================================================
-function sendEmail() {
-  const report = collectReport();
-  const recipient = state.settings.email || '';
-  const cc = state.settings.emailCC || '';
-  const workerTotal = report.workers.reduce((s,w)=>s+w.skill+w.tech+w.labor,0);
-  const subject = encodeURIComponent(`[공사일보] ${report.project?.name||'현장'} - ${report.date} (No.${report.no||'-'})`);
-  const body = encodeURIComponent(
-`공사일보 보고드립니다.
+  // ── 섹션3: 자재입고 ──
+  ws.mergeCells('A49:H49'); ws.mergeCells('I49:P49');
+  secHeader(ws,49,'3. 자재 입고');
+  const matSecCell=ws.getCell('I49'); matSecCell.value='4. 특이사항';
+  styleCell(matSecCell,{bold:true,size:9,bg:NAVY,fontColor:WHITE,h:'left',border:true});
+  ws.mergeCells('A50:H55'); ws.mergeCells('I50:P55');
+  const matText=(report.materials||[]).map(m=>m.name+(m.spec?' ('+m.spec+')':'')+' '+m.qty+(m.unit||'')).join('\n');
+  ws.getCell('A50').value=matText||'';
+  styleCell(ws.getCell('A50'),{size:8,border:true,v:'top',wrap:true});
+  ws.getCell('I50').value=report.specialNote||'';
+  styleCell(ws.getCell('I50'),{size:8,border:true,v:'top',wrap:true});
+  for(let r=50;r<=55;r++) ws.getRow(r).height=13;
 
-■ 현장명: ${report.project?.name||'-'}
-■ 공사명: ${report.project?.work||'-'}
-■ 작성일: ${report.date||'-'}  일보 No.${report.no||'-'}
-■ 작성자: ${report.author||'-'} ${report.authorTitle||''}
+  // ── 섹션5: 장비사용현황 ──
+  ws.mergeCells('A56:P56');
+  secHeader(ws,56,'5. 장비사용현황');
+  ws.mergeCells('A57:H57'); ws.mergeCells('I57:P57');
+  ws.getCell('A57').value='금일장비사용'; styleCell(ws.getCell('A57'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('I57').value='익일장비사용'; styleCell(ws.getCell('I57'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getRow(57).height=13;
+  const equipText=(report.equips||[]).filter(e=>e.name).map(e=>e.name+' '+e.qty+'대'+(e.desc?' - '+e.desc:'')).join('\n');
+  ws.mergeCells('A58:H60'); ws.mergeCells('I58:P60');
+  ws.getCell('A58').value=equipText||'';
+  styleCell(ws.getCell('A58'),{size:8,border:true,v:'top',wrap:true});
+  ws.getCell('I58').value='';
+  styleCell(ws.getCell('I58'),{size:8,border:true,v:'top',wrap:true});
+  for(let r=58;r<=60;r++) ws.getRow(r).height=13;
 
-【날씨】오전 ${report.weatherAM||'-'} / 오후 ${report.weatherPM||'-'}  기온 ${report.tempMin||'-'}°C ~ ${report.tempMax||'-'}°C
+  // ── 섹션6: 인원투입현황 ──
+  ws.mergeCells('A61:H61'); ws.mergeCells('I61:P61');
+  secHeader(ws,61,'6. 인원투입현황');
+  const sec7=ws.getCell('I61'); sec7.value='7. 작업진행현황';
+  styleCell(sec7,{bold:true,size:9,bg:NAVY,fontColor:WHITE,h:'left',border:true});
 
-【작업인원】 총 ${workerTotal}명
-${report.workers.map(w=>`  - ${w.job}: 기술자${w.skill}·기능공${w.tech}·보통인부${w.labor}`).join('\n')}
-
-【장비 현황】
-${report.equips.map(e=>`  - ${e.name} ${e.qty}대: ${e.desc}`).join('\n')||'  해당없음'}
-
-【작업 내용】
-${report.works.map((w,i)=>`  ${i+1}. ${w}`).join('\n')||'  해당없음'}
-
-【공정율】금일 ${report.progressToday||0}% / 누계 ${report.progressCumul||0}%
-
-【특이사항】
-${report.specialNote||'해당없음'}
-
-첨부파일: 공사일보_${report.date}_No${report.no||'0'}.xlsx
-사진: ${state.photos.length}장 (별도 첨부)
-`);
-
-  const ccPart = cc ? `&cc=${encodeURIComponent(cc)}` : '';
-  window.location.href = `mailto:${recipient}${ccPart}?subject=${subject}&body=${body}`;
-  showToast('✉️ 메일 앱이 열렸습니다');
-}
-
-function shareKakao() {
-  const report = collectReport();
-  const workerTotal = report.workers.reduce((s,w)=>s+w.skill+w.tech+w.labor,0);
-  const text = `[공사일보] ${report.project?.name||'현장'}\n📅 ${report.date||'-'} (No.${report.no||'-'})\n\n🌤 날씨: 오전 ${report.weatherAM||'-'} / 오후 ${report.weatherPM||'-'}\n🌡 기온: ${report.tempMin||'-'}°C ~ ${report.tempMax||'-'}°C\n👷 투입인원: ${workerTotal}명\n📈 공정율: ${report.progressCumul||0}% (금일 ${report.progressToday||0}%)\n📷 사진: ${state.photos.length}장\n\n작성자: ${report.author||'-'} ${report.authorTitle||''}`;
-
-  if (navigator.share) {
-    navigator.share({ title: '공사일보', text }).catch(() => {});
-  } else {
-    // Fallback: copy to clipboard
-    navigator.clipboard.writeText(text).then(() => {
-      showToast('📋 클립보드에 복사됐습니다 (카카오톡에 붙여넣기)');
-    }).catch(() => {
-      window.open('https://open.kakao.com/');
-    });
-  }
-}
-
-function shareGeneral() {
-  const report = collectReport();
-  const workerTotal = report.workers.reduce((s,w)=>s+w.skill+w.tech+w.labor,0);
-  const text = `[공사일보] ${report.project?.name||'현장'} · ${report.date||'-'}\n👷 ${workerTotal}명 · 📈 ${report.progressCumul||0}% · 📷 ${state.photos.length}장`;
-
-  if (navigator.share) {
-    navigator.share({ title: '공사일보', text });
-  } else {
-    navigator.clipboard.writeText(text).then(() => showToast('📋 클립보드에 복사됐습니다'));
-  }
-}
-
-// ======================================================
-// TOAST
-// ======================================================
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-// ======================================================
-// PWA INSTALL
-// ======================================================
-let deferredPrompt = null;
-
-function setupInstall() {
-  window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault();
-    deferredPrompt = e;
-    document.getElementById('installBanner').classList.add('show');
+  // 인원 헤더
+  ws.mergeCells('A62:D62'); ws.mergeCells('I62:L62');
+  ['A62','E62','F62','G62','H62','I62','M62','N62','O62','P62'].forEach(addr=>{
+    const labels={'A62':'구   분','E62':'전일','F62':'금일','G62':'누계','H62':'비고',
+                  'I62':'구   분','M62':'전일','N62':'금일','O62':'누계','P62':'잔여'};
+    const c=ws.getCell(addr);
+    c.value=labels[addr]||'';
+    styleCell(c,{bold:true,size:8,bg:LGRAY,h:'center',border:true});
   });
+  ws.getRow(62).height=13;
 
-  document.getElementById('installBtn').addEventListener('click', () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(() => {
-        deferredPrompt = null;
-        document.getElementById('installBanner').classList.remove('show');
-      });
+  // 인원 데이터 - 앱 작업인원 구조 반영
+  const workers=report.workers||[];
+  let wRow=63;
+
+  // 직종별 rows (최대 7행)
+  const jobRows=[];
+  workers.forEach(w=>{
+    if(w.job){
+      // 관리자/근로자/화신유 합산
+      const mgr = w.mgr||0;
+      const emp = w.emp||0;
+      const hwa0 = (w.hwa&&w.hwa[0])||0;
+      const hwa1 = (w.hwa&&w.hwa[1])||0;
+      const hwa2 = (w.hwa&&w.hwa[2])||0;
+      const today = mgr+emp+hwa0+hwa1+hwa2;
+      jobRows.push({name:w.job, today, mgr, emp, hwa:[hwa0,hwa1,hwa2]});
     }
   });
+  while(jobRows.length<7) jobRows.push({name:'',today:0});
 
-  // iOS detection
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches;
-  if (isIOS && !isInStandaloneMode) {
-    document.getElementById('installBanner').innerHTML = `
-      <div><div class="install-banner-text">📲 Safari에서 공유 버튼 → "홈 화면에 추가"를 눌러 앱으로 설치하세요!</div></div>
-      <div class="install-banner-btn" onclick="document.getElementById('installBanner').classList.remove('show')">닫기</div>
-    `;
-    document.getElementById('installBanner').classList.add('show');
+  jobRows.slice(0,7).forEach((jr,idx)=>{
+    const r=wRow+idx;
+    ws.mergeCells(`A${r}:D${r}`);
+    ws.getCell(`A${r}`).value=jr.name;
+    styleCell(ws.getCell(`A${r}`),{size:8,border:true,h:'center'});
+    ws.getCell(`E${r}`).value=0; styleCell(ws.getCell(`E${r}`),{size:8,border:true,h:'center'});
+    ws.getCell(`F${r}`).value=jr.today; styleCell(ws.getCell(`F${r}`),{size:8,border:true,h:'center'});
+    ws.getCell(`G${r}`).value={formula:`E${r}+F${r}`}; styleCell(ws.getCell(`G${r}`),{size:8,border:true,h:'center'});
+    ws.getCell(`H${r}`).value='-'; styleCell(ws.getCell(`H${r}`),{size:8,border:true,h:'center'});
+    ws.getRow(r).height=10.9;
+  });
+
+  // 인원 누계 행
+  const totR=wRow+7;
+  ws.mergeCells(`A${totR}:D${totR}`);
+  ws.getCell(`A${totR}`).value='인원 누계 (명)';
+  styleCell(ws.getCell(`A${totR}`),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell(`E${totR}`).value={formula:`SUM(E${wRow}:E${wRow+6})`};
+  styleCell(ws.getCell(`E${totR}`),{bold:true,size:8,border:true,h:'center'});
+  ws.getCell(`F${totR}`).value=report.totalSub||0;
+  styleCell(ws.getCell(`F${totR}`),{bold:true,size:8,border:true,h:'center'});
+  ws.getCell(`G${totR}`).value={formula:`E${totR}+F${totR}`};
+  styleCell(ws.getCell(`G${totR}`),{bold:true,size:8,border:true,h:'center'});
+  ws.mergeCells(`I${totR}:L${totR}`);
+  ws.getRow(totR).height=13;
+
+  // 오른쪽 진행현황 (공정율)
+  const prog7start=63;
+  const progressItems=[
+    {name:'전체 공정율', today:report.totalPct||0, unit:'%'},
+    ...( workers.filter(w=>w.job).map(w=>({name:w.job+' 공정율', today:w.pct||0, unit:'%'})) )
+  ];
+  progressItems.slice(0,7).forEach((pi,idx)=>{
+    const r=prog7start+idx;
+    ws.mergeCells(`I${r}:L${r}`);
+    ws.getCell(`I${r}`).value=pi.name;
+    styleCell(ws.getCell(`I${r}`),{size:8,border:true,h:'left'});
+    ws.getCell(`M${r}`).value=0; styleCell(ws.getCell(`M${r}`),{size:8,border:true,h:'center'});
+    ws.getCell(`N${r}`).value=pi.today; styleCell(ws.getCell(`N${r}`),{size:8,border:true,h:'center'});
+    ws.getCell(`O${r}`).value={formula:`M${r}+N${r}`}; styleCell(ws.getCell(`O${r}`),{size:8,border:true,h:'center'});
+    ws.getCell(`P${r}`).value='-'; styleCell(ws.getCell(`P${r}`),{size:8,border:true,h:'center'});
+  });
+
+  // ══════════════════════════════════
+  // 페이지2: 공사사진 (행 73~)
+  // ══════════════════════════════════
+
+  // ── 행72: 구분선 ──
+  ws.getRow(72).height=6;
+
+  // ── 행73~75: 공사사진 타이틀 ──
+  ws.mergeCells('A73:F75'); ws.mergeCells('G73:J75');
+  ws.mergeCells('K73:M73'); ws.mergeCells('N73:P73');
+  ws.mergeCells('K74:L75'); ws.mergeCells('M74:M75');
+  ws.mergeCells('N74:O75'); ws.mergeCells('P74:P75');
+
+  const photoTitleCell=ws.getCell('A73');
+  photoTitleCell.value='공 사 사 진';
+  styleCell(photoTitleCell,{bold:true,size:22,bg:LGRAY,h:'center',v:'center'});
+  photoTitleCell.border=border1;
+
+  ws.getCell('K73').value='작  성'; styleCell(ws.getCell('K73'),{bold:true,size:9,bg:LGRAY,h:'center',border:true});
+  ws.getCell('N73').value='확   인'; styleCell(ws.getCell('N73'),{bold:true,size:9,bg:LGRAY,h:'center',border:true});
+  ws.getCell('K74').value=report.author||''; styleCell(ws.getCell('K74'),{h:'center',size:9,bg:WHITE,border:true});
+  ws.getCell('M74').value='(인)'; styleCell(ws.getCell('M74'),{h:'center',size:9,border:true});
+  ws.getCell('P74').value='(인)'; styleCell(ws.getCell('P74'),{h:'center',size:9,border:true});
+  [73,74,75].forEach(r=>ws.getRow(r).height=18);
+
+  // ── 행76: 여백 ──
+  ws.getRow(76).height=4;
+
+  // ── 행77~79: 현장정보 (반복) ──
+  ws.mergeCells('A77:B77'); ws.mergeCells('C77:H77');
+  ws.mergeCells('I77:J77'); ws.mergeCells('K77:L77');
+  ws.mergeCells('M77:M77'); ws.mergeCells('O77:P77');
+  ws.mergeCells('A78:B78'); ws.mergeCells('C78:H78');
+  ws.mergeCells('I78:J78'); ws.mergeCells('K78:P78');
+  ws.mergeCells('A79:B79'); ws.mergeCells('C79:H79');
+  ws.mergeCells('I79:J79'); ws.mergeCells('K79:P79');
+
+  ws.getCell('A77').value='공 사 명'; styleCell(ws.getCell('A77'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('C77').value=proj.work||''; styleCell(ws.getCell('C77'),{size:8,border:true});
+  ws.getCell('I77').value='날    씨'; styleCell(ws.getCell('I77'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('K77').value=(report.weather||'')+(report.tempMin?' / '+report.tempMin+'°C~'+report.tempMax+'°C':''); styleCell(ws.getCell('K77'),{size:8,border:true,h:'center'});
+  ws.getCell('M77').value='작업일자'; styleCell(ws.getCell('M77'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('O77').value=report.date||''; styleCell(ws.getCell('O77'),{size:8,border:true,h:'center'});
+  ws.getCell('A78').value='공사현장'; styleCell(ws.getCell('A78'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('C78').value=proj.name||''; styleCell(ws.getCell('C78'),{size:8,border:true});
+  ws.getCell('I78').value='발 주 처'; styleCell(ws.getCell('I78'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('K78').value=proj.client||''; styleCell(ws.getCell('K78'),{size:8,border:true});
+  ws.getCell('A79').value='공사기간'; styleCell(ws.getCell('A79'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('C79').value=(proj.startDate&&proj.endDate)?proj.startDate+' ~ '+proj.endDate:''; styleCell(ws.getCell('C79'),{size:8,border:true});
+  ws.getCell('I79').value='공사업체'; styleCell(ws.getCell('I79'),{bold:true,size:8,bg:LGRAY,h:'center',border:true});
+  ws.getCell('K79').value=proj.contractor||''; styleCell(ws.getCell('K79'),{size:8,border:true});
+  [77,78,79].forEach(r=>ws.getRow(r).height=13);
+
+  // ── 행80: 구분선 ──
+  ws.mergeCells('A80:P80');
+  ws.getRow(80).height=14;
+  ws.getCell('A80').fill={type:'pattern',pattern:'solid',fgColor:{argb:LGRAY}};
+  ws.getCell('A80').border=border1;
+
+  // ── 사진 영역 (3열 그리드, 행81~) ──
+  // 사진 위치: B~E, G~J, L~O (각 4열씩, 총 3개/행)
+  // 사진 크기: 가로 약 200px, 세로 약 160px
+  const IMG_W=180, IMG_H=150;
+  // 행 높이: 사진행=115pt, 캡션행=14pt, 구분행=8pt
+  const ROW_H_PIC=115, ROW_H_CAP=14, ROW_H_GAP=8;
+
+  if(!photoList.length){
+    ws.mergeCells('A81:P82');
+    ws.getCell('A81').value='업로드된 사진이 없습니다';
+    styleCell(ws.getCell('A81'),{size:10,h:'center',v:'center'});
+    ws.getRow(81).height=40;
+  } else {
+    let curRow=81;
+    // 3장씩 한 행
+    for(let i=0;i<photoList.length;i+=3){
+      // 사진 행
+      const picRow=curRow;
+      ws.getRow(picRow).height=ROW_H_PIC;
+
+      // 캡션 행
+      const capRow=curRow+1;
+      ws.getRow(capRow).height=ROW_H_CAP;
+
+      // 구분 행
+      const gapRow=curRow+2;
+      ws.getRow(gapRow).height=ROW_H_GAP;
+
+      // 사진 3장 배치 (B열, G열, L열 기준)
+      const startCols=[1,6,11]; // B=2,G=7,L=12 → 0-based: 1,6,11
+      const capCols=['B','G','L'];
+
+      for(let j=0;j<3;j++){
+        const p=photoList[i+j];
+        if(!p||!p.dataUrl) continue;
+        const b64=p.dataUrl.split(',')[1];
+        const ext=p.dataUrl.includes('png')?'png':'jpeg';
+        const imgId=wb.addImage({base64:b64,extension:ext});
+        ws.addImage(imgId,{
+          tl:{col:startCols[j]+0.1, row:picRow-1+0.1},
+          ext:{width:IMG_W, height:IMG_H}
+        });
+        // 캡션
+        const capAddr=capCols[j]+capRow;
+        ws.mergeCells(`${capCols[j]}${capRow}:${String.fromCharCode(capCols[j].charCodeAt(0)+4)}${capRow}`);
+        ws.getCell(capAddr).value=(i+j+1)+'번. '+(p.caption||'');
+        styleCell(ws.getCell(capAddr),{size:8,h:'center',bg:'FFF2F2F2',border:true});
+      }
+      curRow+=3;
+    }
+  }
+
+  // ── 파일 저장 ──
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url;
+  a.download=`공사일보_${report.date||'미정'}_${report.author||'작성자'}_No${report.no||'0'}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('📊 사진 포함 엑셀이 저장되었습니다');
+}
+
+// ── EMAIL ──
+function sendEmail(){
+  const r=collectReport();
+  const to=settings.email||'', cc=settings.emailCC||'';
+  const subj=encodeURIComponent(`[공사일보] ${r.project?.name||'현장'} - ${r.date} (No.${r.no||'-'})`);
+  const body=encodeURIComponent([
+    '공사일보 보고드립니다.',''
+    ,'■ 현장명: '+(r.project?.name||'-')
+    ,'■ 작성일: '+(r.date||'-')+'  No.'+(r.no||'-')
+    ,'■ 작성자: '+(r.author||'-')+' '+(r.authorTitle||''),''
+    ,'【날씨】'+(r.weather||'-')+'  기온 '+(r.tempMin||'-')+'°C ~ '+(r.tempMax||'-')+'°C',''
+    ,'【작업인원】총 '+r.totalSub+'명 / 목표 '+r.totalTarget+'명  전체공정율 '+r.totalPct+'%'
+    ,...r.workers.filter(w=>w.job).map(w=>'  - '+w.job+': '+w.sub+'명 (목표'+w.target+') 공정율 '+w.pct+'%'),''
+    ,'【장비 현황】'
+    ,...(r.equips.length?r.equips.map(e=>'  - '+e.name+' '+e.qty+'대: '+e.desc):['  해당없음']),''
+    ,'【자재 입고】'
+    ,...(r.materials.length?r.materials.map(m=>'  - '+m.name+(m.spec?' ('+m.spec+')':'')+' '+m.qty+m.unit):['  해당없음']),''
+    ,'【작업 내용】'
+    ,...(r.works.length?r.works.map((w,i)=>'  '+(i+1)+'. '+w):['  해당없음']),''
+    ,'【특이사항】',r.specialNote||'해당없음',''
+    ,'첨부: 공사일보_'+r.date+'_No'+(r.no||'0')+'.xlsx  사진 '+photos.length+'장'
+  ].join('\n'));
+  window.location.href=`mailto:${to}${cc?'&cc='+encodeURIComponent(cc):''}?subject=${subj}&body=${body}`;
+  toast('✉️ 메일 앱이 열렸습니다');
+}
+// ── KAKAO / SHARE ──
+function shareKakao(){
+  const r=collectReport();
+  const text=`[공사일보] ${r.project?.name||'현장'}\n📅 ${r.date||'-'} (No.${r.no||'-'})\n\n🌤 날씨: ${r.weather||'-'}  🌡 ${r.tempMin||'-'}°C ~ ${r.tempMax||'-'}°C\n👷 투입인원: ${r.totalSub}명 / 목표 ${r.totalTarget}명\n📈 공정율: ${r.totalPct}%\n📷 사진: ${photos.length}장`;
+  if(navigator.share) navigator.share({title:'공사일보',text}).catch(()=>{});
+  else navigator.clipboard.writeText(text).then(()=>toast('📋 클립보드에 복사됐습니다 (카카오톡에 붙여넣기)')).catch(()=>{});
+}
+function shareGeneral(){
+  const r=collectReport();
+  const text=`[공사일보] ${r.project?.name||'현장'} · ${r.date||'-'}\n👷 ${r.totalSub}명(목표${r.totalTarget}) · 📈 ${r.totalPct}% · 📷 ${photos.length}장`;
+  if(navigator.share) navigator.share({title:'공사일보',text});
+  else navigator.clipboard.writeText(text).then(()=>toast('📋 클립보드에 복사됐습니다'));
+}
+
+// ── NAVER WORKS 공유 ──
+function shareNaverWorks(){
+  const r=collectReport();
+
+  // 1단계: 엑셀 먼저 다운로드 (사진 포함)
+  generateExcel(r, photos);
+
+  // 2단계: 안내 모달 표시
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-end';
+  const siteName=r.project?.name||'현장';
+  const fileName=`공사일보_${r.date||'미정'}_No${r.no||'0'}.xlsx`;
+  modal.innerHTML=`
+    <div style="width:100%;background:#fff;border-radius:20px 20px 0 0;padding:22px 20px 32px;animation:slideUp .3s ease">
+      <div style="width:38px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 16px"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="width:40px;height:40px;background:linear-gradient(135deg,#03c75a,#02a84a);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px">🟢</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#1a2744">네이버 웍스 게시판 첨부 방법</div>
+          <div style="font-size:11px;color:#6b7694;margin-top:2px">${siteName} · ${r.date||'-'}</div>
+        </div>
+      </div>
+
+      <div style="background:#f0f9f4;border-radius:10px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#02a84a;margin-bottom:8px">📥 엑셀 파일이 저장되었습니다</div>
+        <div style="font-size:12px;color:#1a2744;background:#fff;border-radius:6px;padding:8px 10px;font-family:monospace;word-break:break-all">${fileName}</div>
+      </div>
+
+      <div style="font-size:12px;color:#1a2744;line-height:2">
+        <div style="font-weight:700;margin-bottom:6px;color:#1a2744">📋 게시판 첨부 순서</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="width:22px;height:22px;background:#03c75a;border-radius:50%;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+            <div style="font-size:12px;padding-top:2px">네이버 웍스 앱 열기 → <strong>게시판</strong> 탭</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="width:22px;height:22px;background:#03c75a;border-radius:50%;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div style="font-size:12px;padding-top:2px"><strong>글쓰기</strong> → 📎 첨부 아이콘 탭</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="width:22px;height:22px;background:#03c75a;border-radius:50%;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+            <div style="font-size:12px;padding-top:2px"><strong>파일 선택</strong> → 다운로드 폴더에서 <strong>${fileName}</strong> 선택</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="width:22px;height:22px;background:#03c75a;border-radius:50%;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">4</div>
+            <div style="font-size:12px;padding-top:2px">제목·내용 입력 후 <strong>게시</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="this.closest('[style*=fixed]').remove();openNaverWorksApp()" style="flex:1;padding:13px;background:linear-gradient(135deg,#03c75a,#02a84a);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+          🟢 웍스 앱 열기
+        </button>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="padding:13px 16px;background:#f0f2f7;color:#1a2744;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+          닫기
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+}
+
+function openNaverWorksApp(){
+  // 네이버 웍스 앱 딥링크 시도 → 없으면 웹 버전으로 fallback
+  const deeplink='naverworks://';
+  const webUrl='https://talk.worksmobile.com/';
+  const start=Date.now();
+  window.location.href=deeplink;
+  setTimeout(()=>{
+    if(Date.now()-start < 2000) window.open(webUrl,'_blank');
+  }, 1500);
+}
+
+// ── PWA INSTALL ──
+let deferredPrompt=null;
+function setupInstall(){
+  window.addEventListener('beforeinstallprompt',e=>{
+    e.preventDefault(); deferredPrompt=e;
+    $id('installBar').classList.add('on');
+  });
+  $id('installBtn').addEventListener('click',()=>{
+    if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt.userChoice.then(()=>{ deferredPrompt=null; $id('installBar').classList.remove('on'); }); }
+  });
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+  if(isIOS&&!window.matchMedia('(display-mode:standalone)').matches){
+    $id('installBar').innerHTML='<div style="font-size:11px;font-weight:600">📲 Safari → 공유버튼 → "홈 화면에 추가"로 설치하세요!</div><div class="install-bar-btn" onclick="$id(\'installBar\').classList.remove(\'on\')">닫기</div>';
+    $id('installBar').classList.add('on');
   }
 }
-</script>
 
-<!-- PWA MANIFEST (inline) -->
-<script>
-(function() {
-  const manifest = {
-    name: "공사일보 관리 시스템",
-    short_name: "공사일보",
-    description: "공사현장 일일 보고서 작성 앱",
-    start_url: "./",
-    display: "standalone",
-    theme_color: "#1a2744",
-    background_color: "#f0f2f7",
-    orientation: "portrait",
-    icons: [
-      { src: "data:image/svg+xml," + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%231a2744'/><text y='130' x='30' font-size='120' font-family='Arial'>🏗</text></svg>`), sizes: "192x192", type: "image/svg+xml" }
-    ]
-  };
-  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('link');
-  link.rel = 'manifest';
-  link.href = url;
-  document.head.appendChild(link);
+// PWA manifest
+(()=>{
+  const m={name:'공사일보',short_name:'공사일보',start_url:'./',display:'standalone',theme_color:'#1a2744',background_color:'#f0f2f7',
+    icons:[{src:"data:image/svg+xml,"+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%231a2744'/><text y='130' x='30' font-size='120'>🏗</text></svg>`),sizes:'192x192',type:'image/svg+xml'}]};
+  const b=new Blob([JSON.stringify(m)],{type:'application/manifest+json'});
+  const l=document.createElement('link'); l.rel='manifest'; l.href=URL.createObjectURL(b);
+  document.head.appendChild(l);
 })();
 </script>
-
 </body>
 </html>
