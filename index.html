@@ -1397,7 +1397,6 @@ async function generateExcel(report, photoArr){
 
   // ── 라벨+값 셀 쌍 ──
   function kv(row, labelCell, labelVal, valCell, valMerge, val, opts={}){
-    ws.mergeCells(labelMerge) if labelMerge; // skip
     ws.getCell(labelCell).value=labelVal;
     ws.getCell(labelCell).font=fnt({sz:8,bold:true,c:DGRAY});
     ws.getCell(labelCell).fill=fl(LGRAY);
