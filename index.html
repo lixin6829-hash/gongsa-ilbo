@@ -331,9 +331,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
               <th style="background:#1e3830;min-width:28px">화기</th>
               <th style="background:#1e3830;min-width:28px">신호</th>
               <th style="background:#1e3830;min-width:28px">유도</th>
-              <th style="background:#1e4a6e;min-width:32px">투입<br>예정</th>
+              <th style="background:#374151;min-width:32px">누적</th>
               <th style="background:#b84a10;min-width:28px">소계</th>
-              <th style="background:#065f46;min-width:32px">공정율</th>
+              <th style="background:#065f46;min-width:36px">공정율</th>
               <th style="width:22px"></th>
             </tr>
           </thead>
@@ -341,12 +341,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <tfoot>
             <tr style="background:linear-gradient(90deg,#f0f4ff,#e8f0fe);font-weight:700;font-size:11px">
               <td>합계</td>
-              <td id="f0">0</td>
-              <td id="f1">0</td>
+              <td id="f0">0</td><td id="f1">0</td>
               <td id="f2">0</td><td id="f3">0</td><td id="f4">0</td>
-              <td id="fTarget" style="color:var(--navy)">0</td>
+              <td id="fCumul" style="color:var(--navy)">0</td>
               <td id="fAll" style="color:var(--orange)">0</td>
-              <td id="fPct" style="color:#065f46">0%</td>
+              <td id="fPct" style="color:#065f46">-</td>
               <td></td>
             </tr>
           </tfoot>
@@ -477,9 +476,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="card-hdr"><span>👷</span> 인원 누계 (자동집계)</div>
       <div class="card-body">
         <div class="mini-grid">
-          <div class="mini"><div class="mini-label">누계 총 인원</div><div class="mini-val" id="cSkill" style="color:var(--orange)">0</div><div class="mini-unit">명</div></div>
-          <div class="mini"><div class="mini-label">투입예정인원</div><div class="mini-val" id="cTech">0</div><div class="mini-unit">명</div></div>
-          <div class="mini"><div class="mini-label">누계 공정율</div><div class="mini-val" id="cLabor" style="color:#065f46">0%</div><div class="mini-unit"></div></div>
+          <div class="mini"><div class="mini-label">당일 총 인원</div><div class="mini-val" id="cSkill" style="color:var(--orange)">0</div><div class="mini-unit">명</div></div>
+          <div class="mini"><div class="mini-label">누계 총 인원</div><div class="mini-val" id="cTech" style="color:var(--navy)">0</div><div class="mini-unit">명</div></div>
+          <div class="mini"><div class="mini-label">공정율 (최신)</div><div class="mini-val" id="cLabor" style="color:#065f46">-</div><div class="mini-unit"></div></div>
           <div class="mini" style="background:linear-gradient(135deg,#fff5eb,#fff0e0);border:1.5px solid var(--orange)">
             <div class="mini-label">작성 일수</div>
             <div class="mini-val" style="color:var(--orange)" id="cTotal2">0</div>
@@ -878,14 +877,20 @@ function resetForm(s){
   $id('tMin').value=''; $id('tMax').value='';
   $id('wBody').innerHTML='';
   $id('equipList').innerHTML=''; $id('matList').innerHTML=''; $id('workList').innerHTML='';
-  if($id('prgBadge')) $id('prgBadge').textContent='0%';
+  if($id('prgBadge')) $id('prgBadge').textContent='-';
 
-  // 최근 저장 일보의 투입예정(target) 이월 - 직종도 그대로 유지
-  const lastReport=reports[0];
+  // 전일 누적 = 전일 소계 + 전일 누적 → 오늘 누적란에 자동 입력 (수동수정 가능)
+  const lastReport=reports[0]; // 가장 최근 일보
   if(lastReport&&lastReport.workers&&lastReport.workers.length){
-    lastReport.workers.forEach(w=>{ if(w.job) addWorker(w.job, w.target||0); });
+    lastReport.workers.forEach(w=>{
+      if(w.job){
+        // 전일누적 = 전일의 누적 + 전일의 소계
+        const newCumul=(w.cumul||0)+(w.sub||0);
+        addWorker(w.job, newCumul);
+      }
+    });
   } else {
-    ['판넬','덕트','배관','자동제어'].forEach(n=>addWorker(n,0));
+    ['철근공','형틀목공','콘크리트공','일반작업'].forEach(n=>addWorker(n, 0));
   }
 
   addEquip(); addMat(); addWork();
@@ -901,50 +906,50 @@ function selW(btn){
 }
 
 // ── WORKER ──
-function addWorker(name='', initTarget=0){
+function addWorker(name='', initCumul=0){
   const tbody=$id('wBody');
   const tr=document.createElement('tr');
   const ni=(ph)=>`<td><input type="number" value="0" min="0" placeholder="${ph}" style="width:100%;padding:3px 1px;text-align:center;border:1px solid var(--border);border-radius:3px;font-size:11px;background:#fff;font-family:inherit" oninput="calcW()"></td>`;
   tr.innerHTML=`
     <td style="min-width:58px"><input type="text" value="${name}" placeholder="직종" style="width:100%;padding:4px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:#fff;font-family:inherit"></td>
-    ${ni('관리자')}
-    ${ni('근로자')}
-    ${ni('화기')}${ni('신호')}${ni('유도')}
-    <td><input type="number" value="${initTarget}" min="0" placeholder="예정" style="width:100%;padding:3px 1px;text-align:center;border:1.5px solid var(--navy);border-radius:3px;font-size:11px;background:#f0f4ff;font-family:inherit;font-weight:700" oninput="calcW()"></td>
+    ${ni('관리자')}${ni('근로자')}${ni('화기')}${ni('신호')}${ni('유도')}
+    <td><input type="number" value="${initCumul}" min="0" placeholder="누적" style="width:100%;padding:3px 1px;text-align:center;border:1.5px solid #374151;border-radius:3px;font-size:11px;background:#f4f5f7;font-family:inherit;font-weight:700;color:#374151" oninput="calcW()"></td>
     <td style="font-weight:700;color:var(--orange);text-align:center;font-size:12px;white-space:nowrap" class="w-sub">0</td>
-    <td style="text-align:center;font-size:11px;font-weight:700;white-space:nowrap" class="w-pct">-</td>
+    <td><input type="number" value="" min="0" max="100" placeholder="%" style="width:100%;padding:3px 1px;text-align:center;border:1.5px solid #065f46;border-radius:3px;font-size:11px;background:#f0faf5;font-family:inherit;font-weight:700;color:#065f46" class="w-pct-inp" oninput="calcW()"></td>
     <td><button class="rm-btn" onclick="rmRow(this)" style="padding:3px 5px;font-size:11px">✕</button></td>`;
   tbody.appendChild(tr); calcW();
 }
 
 function calcW(){
-  // 입력 순서: [0]=직종명, [1]=관리자, [2]=근로자, [3]=화기, [4]=신호, [5]=유도, [6]=투입총계
+  // inp[0~4]=관리자~유도, inp[5]=누적, inp[6]=공정율(수동)
   const totals=Array(5).fill(0);
-  let totalSub=0, totalTarget=0;
+  let totalSub=0, totalCumul=0;
+  let pctVals=[], pctCount=0;
   $id('wBody').querySelectorAll('tr').forEach(tr=>{
     const inp=tr.querySelectorAll('input[type=number]');
     let sub=0;
     for(let i=0;i<5;i++){ const v=parseInt(inp[i]?.value)||0; totals[i]+=v; sub+=v; }
-    const target=parseInt(inp[5]?.value)||0;
-    const pct=target>0?Math.min(Math.round(sub/target*100),100):null;
+    const cumul=parseInt(inp[5]?.value)||0;
     const subCell=tr.querySelector('.w-sub');
-    const pctCell=tr.querySelector('.w-pct');
     if(subCell) subCell.textContent=sub;
-    if(pctCell){
-      pctCell.textContent=pct!==null?pct+'%':'-';
-      pctCell.style.color=pct!==null?(pct>=100?'#16a34a':pct>=50?'var(--navy)':'var(--gray)'):'var(--gray)';
+    totalSub+=sub; totalCumul+=cumul;
+    // 공정율은 수동 입력 (w-pct-inp), 평균을 전체 공정율로
+    const pctInp=tr.querySelector('.w-pct-inp');
+    if(pctInp&&pctInp.value!==''){
+      const pv=parseFloat(pctInp.value)||0;
+      pctVals.push(pv); pctCount++;
     }
-    totalSub+=sub; totalTarget+=target;
   });
   totals.forEach((v,i)=>{ const el=$id('f'+i); if(el) el.textContent=v; });
-  if($id('fTarget')) $id('fTarget').textContent=totalTarget;
+  if($id('fCumul')) $id('fCumul').textContent=totalCumul;
   if($id('fAll')) $id('fAll').textContent=totalSub;
-  const pct=totalTarget>0?Math.min(Math.round(totalSub/totalTarget*100),100):0;
+  // 전체 공정율 = 입력된 공정율의 평균 (없으면 '-')
+  const avgPct=pctCount>0?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctCount):null;
   if($id('prgBadge')){
-    $id('prgBadge').textContent=pct+'%';
-    $id('prgBadge').style.background=pct>=100?'#16a34a':pct>=50?'var(--navy)':'var(--orange)';
+    $id('prgBadge').textContent=avgPct!==null?avgPct+'%':'-';
+    $id('prgBadge').style.background=avgPct!==null?(avgPct>=100?'#16a34a':avgPct>=50?'var(--navy)':'var(--orange)'):'var(--gray)';
   }
-  if($id('fPct')) $id('fPct').textContent=pct+'%';
+  if($id('fPct')) $id('fPct').textContent=avgPct!==null?avgPct+'%':'-';
 }
 function addEquip(){
   const list=$id('equipList'), idx=list.children.length+1;
@@ -1053,16 +1058,17 @@ function clearPhotos(){
 function collectReport(){
   const workers=[];
   $id('wBody').querySelectorAll('tr').forEach(tr=>{
-    const inp=tr.querySelectorAll('input');
-    // inp[0]=직종명, inp[1]=관리자, inp[2]=근로자, inp[3]=화기, inp[4]=신호, inp[5]=유도, inp[6]=투입총계
-    const job=inp[0]?.value||'';
-    const mgr=parseInt(inp[1]?.value)||0;
-    const emp=parseInt(inp[2]?.value)||0;
-    const hwa=[parseInt(inp[3]?.value)||0, parseInt(inp[4]?.value)||0, parseInt(inp[5]?.value)||0];
-    const target=parseInt(inp[6]?.value)||0;
+    const allInp=tr.querySelectorAll('input');
+    // allInp[0]=직종(text), [1]=관리자, [2]=근로자, [3]=화기, [4]=신호, [5]=유도, [6]=누적, [7]=공정율
+    const job=allInp[0]?.value||'';
+    const mgr=parseInt(allInp[1]?.value)||0;
+    const emp=parseInt(allInp[2]?.value)||0;
+    const hwa=[parseInt(allInp[3]?.value)||0,parseInt(allInp[4]?.value)||0,parseInt(allInp[5]?.value)||0];
+    const cumul=parseInt(allInp[6]?.value)||0;
     const sub=mgr+emp+hwa.reduce((a,b)=>a+b,0);
-    const pct=target>0?Math.min(Math.round(sub/target*100),100):0;
-    workers.push({job, mgr, emp, hwa, target, sub, pct});
+    const pctInp=tr.querySelector('.w-pct-inp');
+    const pct=pctInp&&pctInp.value!==''?parseFloat(pctInp.value)||0:null;
+    workers.push({job, mgr, emp, hwa, cumul, sub, pct});
   });
   const equips=[];
   $id('equipList').querySelectorAll('.erow').forEach(row=>{
@@ -1077,14 +1083,15 @@ function collectReport(){
   const works=[];
   $id('workList').querySelectorAll('textarea').forEach(ta=>{ if(ta.value.trim()) works.push(ta.value.trim()); });
   const totalSub=workers.reduce((s,w)=>s+w.sub,0);
-  const totalTarget=workers.reduce((s,w)=>s+w.target,0);
-  const totalPct=totalTarget>0?Math.min(Math.round(totalSub/totalTarget*100),100):0;
+  const totalCumul=workers.reduce((s,w)=>s+w.cumul,0);
+  const pctVals=workers.map(w=>w.pct).filter(p=>p!==null);
+  const totalPct=pctVals.length>0?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length):null;
   return{
     id:Date.now(), date:$id('rDate').value, no:$id('rNo').value,
     author:$id('rAuthor').value, authorTitle:$id('rTitle').value,
     weather:wMain, tempMin:$id('tMin').value, tempMax:$id('tMax').value,
     workers, equips, materials, works,
-    totalSub, totalTarget, totalPct,
+    totalSub, totalCumul, totalPct,
     specialNote:$id('rNote').value, photoNote:$id('photoNote').value,
     photoCount:photos.length,
     photos:photos.map(p=>({caption:p.caption})),
@@ -1228,26 +1235,17 @@ function deleteAllReports(){
 function refreshCumul(){
   let totalSub=0;
   const workerMap={}, matRows=[], equipMap={};
-
-  // 날짜 오름차순 정렬 (가장 최근이 [0])
   const sorted=[...reports].sort((a,b)=>a.date>b.date?1:-1);
-  const lastReport=sorted[sorted.length-1]; // 가장 최근 일보
+  const lastReport=sorted[sorted.length-1];
+  const todaySub=lastReport?lastReport.totalSub||0:0;
 
-  // 투입예정: 가산하지 않고 최근 일보의 값만 사용
-  const targetMap={}; // 직종별 최신 투입예정
-  if(lastReport){
-    (lastReport.workers||[]).forEach(w=>{
-      if(w.job) targetMap[w.job]=w.target||0;
-    });
-  }
-
-  // 소계만 누적
   sorted.forEach(r=>{
     totalSub+=(r.totalSub||0);
     (r.workers||[]).forEach(w=>{
       if(w.job){
-        if(!workerMap[w.job]) workerMap[w.job]={sub:0};
+        if(!workerMap[w.job]) workerMap[w.job]={sub:0, pcts:[], todaySub:0};
         workerMap[w.job].sub+=w.sub||0;
+        if(w.pct!==null&&w.pct!==undefined) workerMap[w.job].pcts.push(w.pct);
       }
     });
     (r.materials||[]).forEach(m=>{ if(m.name) matRows.push({date:r.date||'',name:m.name,spec:m.spec||'',qty:m.qty||0,unit:m.unit||''}); });
@@ -1258,33 +1256,39 @@ function refreshCumul(){
     });
   });
 
-  // 투입예정 합계 = 최근 일보 기준
-  const totalTarget=Object.values(targetMap).reduce((s,v)=>s+v,0);
-  const totalPct=totalTarget>0?Math.min(Math.round(totalSub/totalTarget*100),100):0;
-  const pct=totalPct;
+  // 최신 공정율 (마지막 일보 수동입력값)
+  const latestPct = lastReport&&lastReport.totalPct!==null&&lastReport.totalPct!==undefined ? lastReport.totalPct : null;
+  const pctDisp = latestPct!==null ? latestPct+'%' : '-';
 
-  $id('cTotal').textContent=totalSub; $id('cTotal2').textContent=reports.length;
-  $id('cSkill').textContent=totalSub;
-  $id('cTech').textContent=totalTarget;   // 투입예정
-  $id('cLabor').textContent=pct+'%';
+  $id('cTotal').textContent=totalSub;
+  $id('cTotal2').textContent=reports.length;
+  $id('cSkill').textContent=todaySub;    // 당일 총 인원
+  $id('cTech').textContent=totalSub;     // 누계 총 인원
+  $id('cLabor').textContent=pctDisp;     // 공정율
   $id('cDays').textContent=reports.length;
   $id('cReports').textContent=reports.length;
   const last=reports[0];
   $id('cLastDate').textContent=last?last.date:'-';
   $id('cPhotos').textContent=reports.reduce((s,r)=>s+(r.photoCount||0),0);
-  $id('cPrgLabel').textContent=pct+'%'; $id('cPrgFill').style.width=pct+'%';
+  if($id('cPrgLabel')) $id('cPrgLabel').textContent=pctDisp;
+  if($id('cPrgFill')) $id('cPrgFill').style.width=(latestPct||0)+'%';
 
-  // 👷 직종별 누계 - 투입예정은 최근 일보 기준
+  // 👷 직종별 누계
   const wkeys=Object.keys(workerMap);
   $id('cWorkerTbl').innerHTML=!wkeys.length?'<div style="color:var(--gray);font-size:11px;text-align:center;padding:8px">없음</div>':`
-    <table class="dtbl"><thead><tr><th>직종</th><th>누계소계</th><th>투입예정</th><th>공정율</th></tr></thead><tbody>
+    <table class="dtbl"><thead><tr><th>직종</th><th>당일소계</th><th>누계소계</th><th>공정율</th></tr></thead><tbody>
     ${wkeys.map(j=>{
       const w=workerMap[j];
-      const tgt=targetMap[j]||0;
-      const p=tgt>0?Math.min(Math.round(w.sub/tgt*100),100):'-';
-      return`<tr><td style="font-weight:700">${j}</td><td style="font-weight:700;color:var(--orange)">${w.sub}</td><td>${tgt}</td><td style="font-weight:700;color:#065f46">${p!=='-'?p+'%':'-'}</td></tr>`;
+      const todayW=lastReport?(lastReport.workers||[]).find(x=>x.job===j):null;
+      const lastPct=w.pcts.length?w.pcts[w.pcts.length-1]:null;
+      return`<tr>
+        <td style="font-weight:700">${j}</td>
+        <td style="font-weight:700;color:var(--orange)">${todayW?todayW.sub||0:0}</td>
+        <td style="font-weight:700;color:var(--navy)">${w.sub}</td>
+        <td style="font-weight:700;color:#065f46">${lastPct!==null?lastPct+'%':'-'}</td>
+      </tr>`;
     }).join('')}
-    <tr class="total-row"><td>합계</td><td style="color:var(--orange)">${totalSub}</td><td>${totalTarget}</td><td style="color:#065f46">${pct}%</td></tr>
+    <tr class="total-row"><td>합계</td><td style="color:var(--orange)">${todaySub}</td><td style="color:var(--navy)">${totalSub}</td><td style="color:#065f46">${pctDisp}</td></tr>
     </tbody></table>`;
 
   // 📦 자재
