@@ -540,8 +540,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="card-hdr"><span>📤</span> 일보 내보내기</div>
       <div class="card-body">
         <div class="act-grid">
-          <button class="act-btn" style="background:linear-gradient(135deg,#1a6b35,#217a3e);color:#fff" onclick="exportExcel()">
-            <span class="act-ic">📊</span>엑셀 다운로드
+          <button class="act-btn" style="background:linear-gradient(135deg,#1a56db,#1d4ed8);color:#fff" onclick="exportWord()">
+            <span class="act-ic">📄</span>Word 다운로드
           </button>
           <button class="act-btn" style="background:linear-gradient(135deg,#1a56db,#1d4ed8);color:#fff" onclick="sendEmail()">
             <span class="act-ic">✉️</span>이메일 전송
@@ -1186,7 +1186,7 @@ function openHistDetail(r){
     </span></div>
     ${r.specialNote?`<div style="font-size:11px;color:var(--gray);margin-top:8px;padding:8px;background:#f8f9fc;border-radius:6px">${r.specialNote}</div>`:''}
     <div style="display:flex;gap:8px;margin-top:12px">
-      <button onclick="exportExcelById(${r.id})" style="flex:1;padding:11px;background:var(--orange);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📊 엑셀</button>
+      <button onclick="exportWordById(${r.id})" style="flex:1;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📄 Word</button>
       <button onclick="deleteReport(${r.id})" style="padding:11px 14px;background:#fee2e2;color:#dc2626;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 삭제</button>
     </div>`;
   $id('ovHist').classList.add('on');
@@ -1334,348 +1334,306 @@ function buildPreview(){
     <div class="srow"><span class="slabel">사진</span><span class="sval">${photos.length}장</span></div>`;
 }
 
-// ── EXCEL ──
-function exportExcel(){ generateExcel(collectReport(), photos); }
-function exportExcelById(id){
+// ── WORD ──
+function exportWord(){ generateWord(collectReport(), photos); }
+function exportWordById(id){
   const r=reports.find(x=>x.id===id); if(!r) return;
-  // 별도 저장된 사진 dataUrl 불러오기
   let savedPhotos=[];
   try{
-    const imgKey='gsa_img_'+curSiteId+'_'+id;
-    const raw=localStorage.getItem(imgKey);
+    const raw=localStorage.getItem('gsa_img_'+curSiteId+'_'+id);
     if(raw) savedPhotos=JSON.parse(raw);
   }catch(e){}
-  // fallback: report.photos에 dataUrl 있으면 그것 사용
   if(!savedPhotos.length) savedPhotos=(r.photos||[]).filter(p=>p.dataUrl);
-  generateExcel(r, savedPhotos);
+  generateWord(r, savedPhotos);
 }
 
-async function generateExcel(report, photoArr){
-  if(typeof ExcelJS==='undefined'){ toast('라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
-  toast('엑셀 생성 중...');
+async function generateWord(report, photoArr){
+  toast('Word 생성 중...');
   try{
-    const wb  = new ExcelJS.Workbook();
-    const proj= report.project||{};
-    const photoList=(photoArr&&photoArr.length)?photoArr:(report.photos||[]).filter(p=>p.dataUrl);
+    const proj=report.project||{};
     const workers=(report.workers||[]).filter(w=>w.job);
-    const equips =(report.equips||[]).filter(e=>e.name);
-    const mats   =(report.materials||[]).filter(m=>m.name);
-    const TP     = report.totalPct||0;
+    const equips=(report.equips||[]).filter(e=>e.name);
+    const mats=(report.materials||[]).filter(m=>m.name);
+    const photoList=(photoArr&&photoArr.length)?photoArr:(report.photos||[]).filter(p=>p.dataUrl);
 
-    // ── 색상 ──
-    const NAVY='FF1A2744', NAVY2='FF243660', ORANGE='FFF5851F';
-    const LGRAY='FFF5F6FA', MGRAY='FFE2E5EE', DGRAY='FF5A6480';
-    const WHITE='FFFFFFFF', GREEN='FF16A34A', RED='FFDC2626';
+    // ── 색상 변수 ──
+    const NAVY='#1A2744', NAVY2='#2D4A8A', ORANGE='#F5851F';
+    const LGRAY='#F5F6FA', MGRAY='#E2E5EE', WHITE='#FFFFFF';
 
-    // ── 헬퍼 ──
-    const FL=a=>({type:'pattern',pattern:'solid',fgColor:{argb:a}});
-    const FN=(sz,bold,c)=>({name:'맑은 고딕',size:sz||9,bold:!!bold,color:{argb:c||NAVY}});
-    const T={style:'thin',color:{argb:'FFCCCCCC'}};
-    const M={style:'medium',color:{argb:NAVY}};
-    const BA={top:T,bottom:T,left:T,right:T};
-    const BM={top:M,bottom:M,left:M,right:M};
+    // ── 공통 스타일 ──
+    const baseStyle=`
+      font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+      font-size:9pt; color:#1A2744; margin:0; padding:0;
+    `;
 
-    // ── 핵심: 안전한 병합 함수 ──
-    // ExcelJS는 이미 병합된 범위와 겹치면 오류 → 행 단위로 따로 관리
-    function setCell(ws,row,col,val,opts={}){
-      const c=ws.getCell(row,col);
-      if(val!==undefined) c.value=val;
-      c.font=FN(opts.sz||9,opts.bold,opts.fc||NAVY);
-      c.alignment={horizontal:opts.h||'left',vertical:opts.v||'center',wrapText:opts.wrap!==false};
-      if(opts.bg) c.fill=FL(opts.bg);
-      c.border=opts.bdr||BA;
-    }
+    // ── 테이블 셀 헬퍼 ──
+    const hcell=(txt,w,bg=MGRAY,fc=NAVY,bold=true)=>
+      `<td style="width:${w};background:${bg};color:${fc};font-weight:${bold?'bold':'normal'};
+        padding:4pt 6pt;border:1pt solid #C8CDD8;vertical-align:middle;text-align:center;
+        font-family:'맑은 고딕',sans-serif;font-size:8.5pt">${txt}</td>`;
+    const vcell=(txt,w,bg=WHITE,fc=NAVY,align='left',bold=false)=>
+      `<td style="width:${w};background:${bg};color:${fc};font-weight:${bold?'bold':'normal'};
+        padding:4pt 6pt;border:1pt solid #C8CDD8;vertical-align:middle;text-align:${align};
+        font-family:'맑은 고딕',sans-serif;font-size:9pt">${txt}</td>`;
 
-    // 단일행 병합 후 값 설정
-    function mRow(ws,row,c1,c2,val,opts={}){
-      if(c1<c2) ws.mergeCells(row,c1,row,c2);
-      setCell(ws,row,c1,val,opts);
-    }
+    // ── 섹션 헤더 ──
+    const secHdr=(txt)=>
+      `<tr><td colspan="8" style="background:${NAVY};color:${WHITE};font-weight:bold;
+        padding:5pt 8pt;font-size:9pt;font-family:'맑은 고딕',sans-serif;
+        border:1.5pt solid ${NAVY}">${txt}</td></tr>`;
 
-    // ════════════════════════════════
-    // 시트1: 공사일보
-    // ════════════════════════════════
-    const ws1=wb.addWorksheet('공사일보');
-    // 18열 (A~R)
-    [3,3,6,5,4,4,4,4,4,5,5,4,4,4,4,4,4,3].forEach((w,i)=>ws1.getColumn(i+1).width=w);
-
-    let r=1;
-
-    // 상단 여백
-    ws1.getRow(r).height=8; r++;
-
-    // 타이틀 (단일행 × 2세트)
-    ws1.getRow(r).height=16;
-    mRow(ws1,r,1,10,'공  사  일  보',{sz:22,bold:true,fc:WHITE,bg:NAVY,h:'center',v:'middle',bdr:BM});
-    mRow(ws1,r,11,18,'',{bg:NAVY,bdr:BM}); r++;
-
-    ws1.getRow(r).height=14;
-    mRow(ws1,r,1,10,'',{bg:NAVY,bdr:BM});
-    mRow(ws1,r,11,14,'작  성  일',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    mRow(ws1,r,15,18,report.date||'',{sz:9,bold:true,fc:NAVY,bg:WHITE,h:'center',bdr:BA}); r++;
-
-    ws1.getRow(r).height=14;
-    mRow(ws1,r,1,10,'',{bg:NAVY,bdr:BM});
-    mRow(ws1,r,11,14,'작  성  자',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    mRow(ws1,r,15,18,(report.author||'')+(report.authorTitle?' ('+report.authorTitle+')':''),{sz:9,bold:true,fc:ORANGE,bg:WHITE,h:'center',bdr:BA}); r++;
-
-    ws1.getRow(r).height=14;
-    mRow(ws1,r,1,10,'',{bg:NAVY,bdr:BM});
-    mRow(ws1,r,11,14,'일  보  번  호',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    mRow(ws1,r,15,18,'No.'+(report.no||'001'),{sz:9,bold:true,fc:NAVY,bg:WHITE,h:'center',bdr:BA}); r++;
-
-    // 오렌지 라인
-    ws1.getRow(r).height=4;
-    mRow(ws1,r,1,18,'',{bg:ORANGE,bdr:{top:{style:'none'},bottom:{style:'none'},left:{style:'none'},right:{style:'none'}}}); r++;
-    ws1.getRow(r).height=5; r++;
-
-    // ── 현장정보 ──
-    ws1.getRow(r).height=16;
-    mRow(ws1,r,1,18,'[  현  장  정  보  ]',{sz:9,bold:true,fc:WHITE,bg:NAVY,h:'left',bdr:BM}); r++;
-
-    [['공 사 명',proj.work||'','공사현장',proj.name||''],
-     ['발 주 처',proj.client||'','시 공 사',proj.contractor||''],
-     ['감 독 관',proj.supervisor||'','현장소장',proj.manager||''],
-     ['공사기간',(proj.startDate&&proj.endDate)?proj.startDate+' ~ '+proj.endDate:'',
-      '날씨/기온',(report.weather||'-')+(report.tempMin?' | '+report.tempMin+'~'+report.tempMax+'°C':'')]
-    ].forEach(([l1,v1,l2,v2])=>{
-      ws1.getRow(r).height=15;
-      mRow(ws1,r,1,2,l1,{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-      mRow(ws1,r,3,10,v1,{sz:9,fc:NAVY,bg:WHITE,h:'left',bdr:BA});
-      mRow(ws1,r,11,12,l2,{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-      mRow(ws1,r,13,18,v2,{sz:9,fc:NAVY,bg:WHITE,h:'left',bdr:BA}); r++;
+    // ── 인원 테이블 ──
+    let workerRows='';
+    workers.forEach((w,i)=>{
+      const bg=i%2===0?WHITE:LGRAY;
+      const pct=w.pct!==null&&w.pct!==undefined?w.pct+'%':'-';
+      const pctColor=w.pct>=100?'#16A34A':w.pct>=50?NAVY2:'#DC2626';
+      workerRows+=`<tr>
+        ${vcell(w.job,'18%',bg)}
+        ${vcell(w.mgr||0,'7%',bg,NAVY,'center')}
+        ${vcell(w.emp||0,'7%',bg,NAVY,'center')}
+        ${vcell((w.hwa&&w.hwa[0])||0,'7%',bg,NAVY,'center')}
+        ${vcell((w.hwa&&w.hwa[1])||0,'7%',bg,NAVY,'center')}
+        ${vcell((w.hwa&&w.hwa[2])||0,'7%',bg,NAVY,'center')}
+        ${vcell(w.cumul||0,'8%',bg,'#374151','center')}
+        ${vcell(w.sub||0,'8%',bg,ORANGE,'center',true)}
+        ${vcell(pct,'8%',bg,pctColor,'center',true)}
+      </tr>`;
     });
+    // 합계행
+    const pctVals=workers.map(w=>w.pct).filter(p=>p!==null&&p!==undefined);
+    const avgPct=pctVals.length?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length):null;
+    workerRows+=`<tr style="background:${MGRAY}">
+      <td style="font-weight:bold;padding:4pt 6pt;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif;font-size:9pt">합 계</td>
+      <td colspan="5" style="border:1pt solid #C8CDD8"></td>
+      <td style="text-align:center;border:1pt solid #C8CDD8;font-size:9pt">${report.totalCumul||0}</td>
+      <td style="text-align:center;font-weight:bold;color:${ORANGE};border:1pt solid #C8CDD8;font-size:9pt">${report.totalSub||0}</td>
+      <td style="text-align:center;font-weight:bold;color:${NAVY};border:1pt solid #C8CDD8;font-size:9pt">${avgPct!==null?avgPct+'%':'-'}</td>
+    </tr>`;
 
-    ws1.getRow(r).height=5; r++;
+    // ── 장비 테이블 ──
+    let equipRows=equips.length?equips.map((e,i)=>`<tr>
+      ${vcell(e.name,'40%',i%2===0?WHITE:LGRAY)}
+      ${vcell(e.qty+'대','15%',i%2===0?WHITE:LGRAY,NAVY,'center')}
+      ${vcell(e.desc||'','45%',i%2===0?WHITE:LGRAY)}
+    </tr>`).join(''):
+    `<tr><td colspan="3" style="text-align:center;padding:6pt;color:#888;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif">(장비 없음)</td></tr>`;
 
-    // ── 작업인원 ──
-    ws1.getRow(r).height=16;
-    mRow(ws1,r,1,18,'[  작  업  인  원  ]',{sz:9,bold:true,fc:WHITE,bg:NAVY,h:'left',bdr:BM}); r++;
-
-    // 헤더
-    ws1.getRow(r).height=13;
-    mRow(ws1,r,1,4,'직  종',{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',bdr:BA});
-    [5,6,7,8,9,10,11,12].forEach((col,i)=>{
-      const hdrs=['관리자','근로자','화기','신호','유도','목표','소계','공정율'];
-      setCell(ws1,r,col,hdrs[i],{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',bdr:BA});
-    });
-    mRow(ws1,r,13,18,'비  고',{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',bdr:BA}); r++;
-
-    workers.forEach((w,idx)=>{
-      ws1.getRow(r).height=13;
-      const bg=idx%2===0?WHITE:LGRAY;
-      const pct=w.pct||0;
-      const pfc=pct>=100?GREEN:pct>=50?NAVY:RED;
-      mRow(ws1,r,1,4,w.job,{sz:9,fc:NAVY,bg,h:'left',bdr:BA});
-      setCell(ws1,r,5,w.mgr||0,{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
-      setCell(ws1,r,6,w.emp||0,{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
-      setCell(ws1,r,7,(w.hwa&&w.hwa[0])||0,{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
-      setCell(ws1,r,8,(w.hwa&&w.hwa[1])||0,{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
-      setCell(ws1,r,9,(w.hwa&&w.hwa[2])||0,{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
-      setCell(ws1,r,10,w.target||0,{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
-      setCell(ws1,r,11,w.sub||0,{sz:9,bold:true,fc:NAVY,bg,h:'center',bdr:BA});
-      setCell(ws1,r,12,pct+'%',{sz:9,bold:true,fc:pfc,bg,h:'center',bdr:BA});
-      mRow(ws1,r,13,18,'',{sz:8,bg,h:'left',bdr:BA}); r++;
-    });
-
-    // 합계
-    ws1.getRow(r).height=14;
-    mRow(ws1,r,1,4,'합  계',{sz:9,bold:true,fc:WHITE,bg:NAVY,h:'center',bdr:BM});
-    [5,6,7,8,9].forEach(col=>setCell(ws1,r,col,'',{bg:MGRAY,bdr:BA}));
-    setCell(ws1,r,10,report.totalTarget||0,{sz:9,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    setCell(ws1,r,11,report.totalSub||0,{sz:9,bold:true,fc:WHITE,bg:ORANGE,h:'center',bdr:BM});
-    setCell(ws1,r,12,TP+'%',{sz:9,bold:true,fc:WHITE,bg:TP>=100?GREEN:NAVY,h:'center',bdr:BM});
-    mRow(ws1,r,13,18,'',{bg:MGRAY,bdr:BA}); r++;
-
-    ws1.getRow(r).height=5; r++;
+    // ── 자재 테이블 ──
+    let matRows=mats.length?mats.map((m,i)=>`<tr>
+      ${vcell(m.name,'30%',i%2===0?WHITE:LGRAY)}
+      ${vcell(m.spec||'-','20%',i%2===0?WHITE:LGRAY,NAVY,'center')}
+      ${vcell(m.qty,'15%',i%2===0?WHITE:LGRAY,ORANGE,'center',true)}
+      ${vcell(m.unit||'-','10%',i%2===0?WHITE:LGRAY,NAVY,'center')}
+    </tr>`).join(''):
+    `<tr><td colspan="4" style="text-align:center;padding:6pt;color:#888;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif">(자재 없음)</td></tr>`;
 
     // ── 작업내용 ──
-    ws1.getRow(r).height=16;
-    mRow(ws1,r,1,18,'[  작  업  내  용  /  공  종  ]',{sz:9,bold:true,fc:WHITE,bg:NAVY,h:'left',bdr:BM}); r++;
-    const workTxt=(report.works||[]).map((w,i)=>`${i+1}. ${w}`).join('\n')||'(없음)';
-    ws1.getRow(r).height=90;
-    mRow(ws1,r,1,18,workTxt,{sz:9,fc:NAVY,bg:WHITE,h:'left',v:'top',wrap:true,bdr:BM}); r++;
+    const workTxt=(report.works||[]).map((w,i)=>`${i+1}. ${w}`).join('<br>');
 
-    ws1.getRow(r).height=5; r++;
-
-    // ── 자재 / 특이사항 ──
-    ws1.getRow(r).height=16;
-    mRow(ws1,r,1,9,'[  자  재  입  고  ]',{sz:9,bold:true,fc:WHITE,bg:NAVY,h:'left',bdr:BM});
-    mRow(ws1,r,10,18,'[  특이사항  /  조치내용  ]',{sz:9,bold:true,fc:WHITE,bg:NAVY2,h:'left',bdr:BM}); r++;
-
-    const matTxt=mats.map(m=>`- ${m.name}${m.spec?' ('+m.spec+')':''} ${m.qty||''} ${m.unit||''}`).join('\n')||'(없음)';
-    ws1.getRow(r).height=70;
-    mRow(ws1,r,1,9,matTxt,{sz:9,fc:NAVY,bg:WHITE,h:'left',v:'top',wrap:true,bdr:BM});
-    mRow(ws1,r,10,18,report.specialNote||'',{sz:9,fc:NAVY,bg:'FFFFFDF7',h:'left',v:'top',wrap:true,bdr:BM}); r++;
-
-    ws1.getRow(r).height=5; r++;
-
-    // ── 장비 ──
-    ws1.getRow(r).height=16;
-    mRow(ws1,r,1,18,'[  장  비  투  입  현  황  ]',{sz:9,bold:true,fc:WHITE,bg:NAVY,h:'left',bdr:BM}); r++;
-    ws1.getRow(r).height=13;
-    mRow(ws1,r,1,6,'장  비  명',{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',bdr:BA});
-    mRow(ws1,r,7,8,'대  수',{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',bdr:BA});
-    mRow(ws1,r,9,18,'작  업  내  용',{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',bdr:BA}); r++;
-
-    if(!equips.length){
-      ws1.getRow(r).height=13;
-      mRow(ws1,r,1,18,'(장비 없음)',{sz:9,fc:DGRAY,bg:LGRAY,h:'center',bdr:BA}); r++;
-    } else {
-      equips.forEach((e,idx)=>{
-        ws1.getRow(r).height=13;
-        const bg=idx%2===0?WHITE:LGRAY;
-        mRow(ws1,r,1,6,e.name,{sz:9,fc:NAVY,bg,h:'left',bdr:BA});
-        mRow(ws1,r,7,8,String(e.qty||0)+'대',{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
-        mRow(ws1,r,9,18,e.desc||'',{sz:9,fc:NAVY,bg,h:'left',bdr:BA}); r++;
-      });
-    }
-
-    ws1.getRow(r).height=5; r++;
-
-    // ── 공정율 ──
-    ws1.getRow(r).height=16;
-    mRow(ws1,r,1,18,'[  공  정  율  현  황  ]',{sz:9,bold:true,fc:WHITE,bg:NAVY,h:'left',bdr:BM}); r++;
-    ws1.getRow(r).height=14;
-    mRow(ws1,r,1,4,'금일 공정율',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    mRow(ws1,r,5,9,'누계 공정율',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    mRow(ws1,r,10,13,'금일 투입인원',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    mRow(ws1,r,14,18,'목표 인원',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA}); r++;
-    ws1.getRow(r).height=24;
-    mRow(ws1,r,1,4,TP+'%',{sz:14,bold:true,fc:ORANGE,bg:WHITE,h:'center',bdr:BM});
-    mRow(ws1,r,5,9,TP+'%',{sz:14,bold:true,fc:NAVY,bg:WHITE,h:'center',bdr:BM});
-    mRow(ws1,r,10,13,(report.totalSub||0)+'명',{sz:14,bold:true,fc:NAVY,bg:WHITE,h:'center',bdr:BM});
-    mRow(ws1,r,14,18,(report.totalTarget||0)+'명',{sz:14,bold:true,fc:DGRAY,bg:WHITE,h:'center',bdr:BM}); r++;
-
-    ws1.getRow(r).height=5; r++;
-
-    // ── 서명란 ──
-    ws1.getRow(r).height=16;
-    mRow(ws1,r,1,18,'[  서  명  /  확  인  ]',{sz:9,bold:true,fc:WHITE,bg:NAVY,h:'left',bdr:BM}); r++;
-    ws1.getRow(r).height=45;
-    [['작 성 자',1,4],['현장소장',5,9],['감 독 관',10,13],['발 주 처',14,18]].forEach(([lbl,c1,c2])=>{
-      mRow(ws1,r,c1,c2,lbl+'\n\n\n(인)',{sz:9,bold:true,fc:DGRAY,bg:LGRAY,h:'center',v:'top',wrap:true,bdr:BM});
-    }); r++;
-
-    // 하단바
-    ws1.getRow(r).height=4;
-    mRow(ws1,r,1,18,'',{bg:NAVY,bdr:{top:{style:'none'},bottom:{style:'none'},left:{style:'none'},right:{style:'none'}}}); r++;
-
-    // ════════════════════════════════
-    // 시트2: 공사사진대지
-    // ════════════════════════════════
-    const ws2=wb.addWorksheet('공사사진대지');
-
-    // 사진 시트 열 설정: 6열 (A~F) - 좌 3열 / 우 3열
-    for(let i=1;i<=6;i++) ws2.getColumn(i).width=30;
-
-    let r2=1;
-
-    // 타이틀
-    ws2.getRow(r2).height=30;
-    ws2.mergeCells(r2,1,r2,6);
-    setCell(ws2,r2,1,'공 사 사 진 대 지',{sz:18,bold:true,fc:WHITE,bg:NAVY,h:'center',v:'middle',bdr:BM}); r2++;
-
-    // 오렌지 라인
-    ws2.getRow(r2).height=4;
-    ws2.mergeCells(r2,1,r2,6);
-    ws2.getCell(r2,1).fill=FL(ORANGE); r2++;
-
-    // 현장정보 행1
-    ws2.getRow(r2).height=16;
-    ws2.mergeCells(r2,1,r2,1);
-    ws2.mergeCells(r2,2,r2,3);
-    ws2.mergeCells(r2,4,r2,4);
-    ws2.mergeCells(r2,5,r2,6);
-    setCell(ws2,r2,1,'현 장 명',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    setCell(ws2,r2,2,proj.name||'',{sz:9,fc:NAVY,bg:WHITE,h:'left',bdr:BA});
-    setCell(ws2,r2,4,'작업일자',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    setCell(ws2,r2,5,report.date||'',{sz:9,fc:NAVY,bg:WHITE,h:'center',bdr:BA}); r2++;
-
-    // 현장정보 행2
-    ws2.getRow(r2).height=16;
-    ws2.mergeCells(r2,1,r2,1);
-    ws2.mergeCells(r2,2,r2,3);
-    ws2.mergeCells(r2,4,r2,4);
-    ws2.mergeCells(r2,5,r2,6);
-    setCell(ws2,r2,1,'작 성 자',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    setCell(ws2,r2,2,report.author||'',{sz:9,fc:NAVY,bg:WHITE,h:'left',bdr:BA});
-    setCell(ws2,r2,4,'날    씨',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    setCell(ws2,r2,5,report.weather||'',{sz:9,fc:NAVY,bg:WHITE,h:'center',bdr:BA}); r2++;
-
-    // 여백
-    ws2.getRow(r2).height=6; r2++;
-
-    // 사진: 1행에 2장 (좌 A~C / 우 D~F, 각 3열)
-    // 열 너비 22 * 3열 = 66 → 1열 너비 약 165px 환산 → 사진 가로 = 66 * 7.5 ≈ 495px
-    // 실제 엑셀 pt 기준: 22 * 8 = 176pt per 3열
-    const PIC_ROW_H = 285; // pt - 사진 행 높이
-    const CAP_ROW_H = 18;  // pt
-
-    if(!photoList.length){
-      ws2.getRow(r2).height=40;
-      ws2.mergeCells(r2,1,r2,6);
-      setCell(ws2,r2,1,'(업로드된 사진이 없습니다)',{sz:11,fc:DGRAY,bg:LGRAY,h:'center',v:'middle',bdr:BM});
-    } else {
+    // ── 사진 HTML ──
+    let photoHtml='';
+    if(photoList.length){
+      let rows='';
       for(let i=0;i<photoList.length;i+=2){
-        // 사진 행
-        ws2.getRow(r2).height=PIC_ROW_H;
-
-        // 왼쪽 사진 (col A=0)
-        const p1=photoList[i];
-        if(p1&&p1.dataUrl){
-          const b64=p1.dataUrl.split(',')[1];
-          const ext=p1.dataUrl.includes('png')?'png':'jpeg';
-          ws2.addImage(wb.addImage({base64:b64,extension:ext}),{
-            tl:{col:0, row:r2-1},
-            br:{col:3, row:r2}
-          });
-        }
-
-        // 오른쪽 사진 (col D=3)
-        const p2=photoList[i+1];
-        if(p2&&p2.dataUrl){
-          const b64=p2.dataUrl.split(',')[1];
-          const ext=p2.dataUrl.includes('png')?'png':'jpeg';
-          ws2.addImage(wb.addImage({base64:b64,extension:ext}),{
-            tl:{col:3, row:r2-1},
-            br:{col:6, row:r2}
-          });
-        }
-
-        r2++;
-
-        // 캡션 행
-        ws2.getRow(r2).height=CAP_ROW_H;
-        ws2.mergeCells(r2,1,r2,3);
-        ws2.mergeCells(r2,4,r2,6);
-        setCell(ws2,r2,1,(i+1)+'번.  '+(p1&&p1.caption||''),
-          {sz:10,bold:true,fc:NAVY,bg:LGRAY,h:'center',bdr:BA});
-        setCell(ws2,r2,4,p2?(i+2)+'번.  '+(p2.caption||''):'',
-          {sz:10,bold:true,fc:NAVY,bg:LGRAY,h:'center',bdr:BA});
-        r2++;
-
-        // 행 사이 여백
-        if(i+2<photoList.length){ ws2.getRow(r2).height=10; r2++; }
+        const p1=photoList[i], p2=photoList[i+1];
+        rows+=`<tr>
+          <td style="width:50%;padding:6pt;border:1pt solid #C8CDD8;text-align:center;vertical-align:top">
+            ${p1&&p1.dataUrl?`<img src="${p1.dataUrl}" style="max-width:100%;max-height:180pt;object-fit:contain">`:''}<br>
+            <span style="font-size:8.5pt;color:${NAVY};font-weight:bold">${i+1}번.&nbsp;&nbsp;${p1&&p1.caption||''}</span>
+          </td>
+          <td style="width:50%;padding:6pt;border:1pt solid #C8CDD8;text-align:center;vertical-align:top">
+            ${p2&&p2.dataUrl?`<img src="${p2.dataUrl}" style="max-width:100%;max-height:180pt;object-fit:contain">`:''}<br>
+            ${p2?`<span style="font-size:8.5pt;color:${NAVY};font-weight:bold">${i+2}번.&nbsp;&nbsp;${p2.caption||''}</span>`:''}
+          </td>
+        </tr>`;
       }
+      photoHtml=`
+        <div style="margin-top:16pt">
+          <div style="background:${NAVY};color:${WHITE};font-weight:bold;padding:6pt 10pt;
+            font-size:11pt;font-family:'맑은 고딕',sans-serif;letter-spacing:2pt;text-align:center;
+            border-bottom:3pt solid ${ORANGE}">공 &nbsp; 사 &nbsp; 사 &nbsp; 진 &nbsp; 대 &nbsp; 지</div>
+          <table style="width:100%;border-collapse:collapse;margin-top:8pt">${rows}</table>
+        </div>`;
     }
 
-    // 하단바
-    ws2.mergeCells(r2,1,r2,6);
-    ws2.getCell(r2,1).fill=FL(NAVY); ws2.getRow(r2).height=4;
+    // ── 전체 HTML 조립 ──
+    const html=`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size:A4; margin:15mm 12mm; }
+  body { ${baseStyle} }
+  table { border-collapse:collapse; width:100%; }
+  .page-break { page-break-before:always; }
+</style>
+</head>
+<body>
 
-    // ── 저장 ──
-    const buf=await wb.xlsx.writeBuffer();
-    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+<!-- ▌타이틀 -->
+<table style="width:100%;margin-bottom:8pt">
+  <tr>
+    <td style="width:60%;background:${NAVY};padding:10pt 14pt;vertical-align:middle">
+      <div style="color:${WHITE};font-size:20pt;font-weight:bold;font-family:'맑은 고딕',sans-serif;
+        letter-spacing:4pt">공 &nbsp; 사 &nbsp; 일 &nbsp; 보</div>
+    </td>
+    <td style="width:40%;background:${NAVY2};padding:0;vertical-align:top">
+      <table style="width:100%;border-collapse:collapse">
+        <tr>
+          <td style="background:${NAVY2};color:#AAB8D0;font-size:8pt;padding:4pt 8pt;width:40%;border-bottom:1pt solid #3A5A9A;font-family:'맑은 고딕',sans-serif">작 &nbsp; 성 &nbsp; 일</td>
+          <td style="background:${NAVY};color:${WHITE};font-size:9pt;font-weight:bold;padding:4pt 8pt;border-bottom:1pt solid #3A5A9A;font-family:'맑은 고딕',sans-serif">${report.date||'-'}</td>
+        </tr>
+        <tr>
+          <td style="background:${NAVY2};color:#AAB8D0;font-size:8pt;padding:4pt 8pt;width:40%;border-bottom:1pt solid #3A5A9A;font-family:'맑은 고딕',sans-serif">작 &nbsp; 성 &nbsp; 자</td>
+          <td style="background:${NAVY};color:${ORANGE};font-size:9pt;font-weight:bold;padding:4pt 8pt;border-bottom:1pt solid #3A5A9A;font-family:'맑은 고딕',sans-serif">${report.author||'-'}${report.authorTitle?' ('+report.authorTitle+')':''}</td>
+        </tr>
+        <tr>
+          <td style="background:${NAVY2};color:#AAB8D0;font-size:8pt;padding:4pt 8pt;width:40%;font-family:'맑은 고딕',sans-serif">일 보 번 호</td>
+          <td style="background:${NAVY};color:${WHITE};font-size:9pt;font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif">No. ${report.no||'001'}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<div style="height:3pt;background:${ORANGE};margin-bottom:8pt"></div>
+
+<!-- ▌현장정보 -->
+<table style="margin-bottom:8pt">
+  <tr style="background:${NAVY}">
+    <td colspan="4" style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 현 장 정 보</td>
+  </tr>
+  <tr>
+    ${hcell('공 사 명','12%')} ${vcell(proj.work||'-','38%')}
+    ${hcell('공사현장','12%')} ${vcell(proj.name||'-','38%')}
+  </tr>
+  <tr>
+    ${hcell('발 주 처','12%')} ${vcell(proj.client||'-','38%')}
+    ${hcell('시 공 사','12%')} ${vcell(proj.contractor||'-','38%')}
+  </tr>
+  <tr>
+    ${hcell('감 독 관','12%')} ${vcell(proj.supervisor||'-','38%')}
+    ${hcell('현장소장','12%')} ${vcell(proj.manager||'-','38%')}
+  </tr>
+  <tr>
+    ${hcell('공사기간','12%')} ${vcell((proj.startDate&&proj.endDate)?proj.startDate+' ~ '+proj.endDate:'-','38%')}
+    ${hcell('날씨/기온','12%')} ${vcell((report.weather||'-')+(report.tempMin?' | '+report.tempMin+'~'+report.tempMax+'°C':''),'38%')}
+  </tr>
+</table>
+
+<!-- ▌작업인원 -->
+<table style="margin-bottom:8pt">
+  <tr style="background:${NAVY}">
+    <td colspan="9" style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 작 업 인 원</td>
+  </tr>
+  <tr>
+    ${hcell('직  종','18%',NAVY2,WHITE)}
+    ${hcell('관리자','7%',NAVY2,WHITE)}
+    ${hcell('근로자','7%',NAVY2,WHITE)}
+    ${hcell('화기','7%',NAVY2,WHITE)}
+    ${hcell('신호','7%',NAVY2,WHITE)}
+    ${hcell('유도','7%',NAVY2,WHITE)}
+    ${hcell('누적','8%',NAVY2,WHITE)}
+    ${hcell('소계','8%',NAVY2,WHITE)}
+    ${hcell('공정율','8%',NAVY2,WHITE)}
+  </tr>
+  ${workerRows}
+</table>
+
+<!-- ▌작업내용 / 특이사항 (2단) -->
+<table style="margin-bottom:8pt">
+  <tr>
+    <td style="width:58%;vertical-align:top;padding-right:6pt">
+      <table>
+        <tr style="background:${NAVY}"><td style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 작 업 내 용 / 공 종</td></tr>
+        <tr><td style="padding:6pt;border:1pt solid #C8CDD8;min-height:50pt;line-height:1.7;font-size:9pt;font-family:'맑은 고딕',sans-serif">${workTxt||'(없음)'}</td></tr>
+      </table>
+    </td>
+    <td style="width:42%;vertical-align:top;padding-left:6pt">
+      <table>
+        <tr style="background:${NAVY2}"><td style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 특이사항 / 조치내용</td></tr>
+        <tr><td style="padding:6pt;border:1pt solid #C8CDD8;min-height:50pt;line-height:1.7;font-size:9pt;background:#FFFFF8;font-family:'맑은 고딕',sans-serif">${report.specialNote||''}</td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<!-- ▌자재 / 장비 (2단) -->
+<table style="margin-bottom:8pt">
+  <tr>
+    <td style="width:52%;vertical-align:top;padding-right:6pt">
+      <table>
+        <tr style="background:${NAVY}"><td colspan="4" style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 자 재 입 고</td></tr>
+        <tr>${hcell('자재명','30%',NAVY2,WHITE)}${hcell('규격','20%',NAVY2,WHITE)}${hcell('수량','15%',NAVY2,WHITE)}${hcell('단위','10%',NAVY2,WHITE)}</tr>
+        ${matRows}
+      </table>
+    </td>
+    <td style="width:48%;vertical-align:top;padding-left:6pt">
+      <table>
+        <tr style="background:${NAVY}"><td colspan="3" style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 장 비 투 입</td></tr>
+        <tr>${hcell('장비명','40%',NAVY2,WHITE)}${hcell('대수','15%',NAVY2,WHITE)}${hcell('작업내용','45%',NAVY2,WHITE)}</tr>
+        ${equipRows}
+      </table>
+    </td>
+  </tr>
+</table>
+
+<!-- ▌공정율 요약 -->
+<table style="margin-bottom:8pt">
+  <tr style="background:${NAVY}">
+    <td colspan="4" style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 공 정 율 현 황</td>
+  </tr>
+  <tr>
+    ${hcell('금일 투입인원','25%')}${hcell('누계 총 인원','25%')}${hcell('공정율','25%')}${hcell('날씨','25%')}
+  </tr>
+  <tr>
+    <td style="text-align:center;font-size:14pt;font-weight:bold;color:${ORANGE};padding:6pt;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif">${report.totalSub||0}명</td>
+    <td style="text-align:center;font-size:14pt;font-weight:bold;color:${NAVY};padding:6pt;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif">${report.totalCumul||0}명</td>
+    <td style="text-align:center;font-size:14pt;font-weight:bold;color:${avgPct>=100?'#16A34A':NAVY2};padding:6pt;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif">${avgPct!==null?avgPct+'%':'-'}</td>
+    <td style="text-align:center;font-size:12pt;font-weight:bold;color:${NAVY};padding:6pt;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif">${report.weather||'-'}</td>
+  </tr>
+</table>
+
+<!-- ▌서명란 -->
+<table style="margin-bottom:8pt">
+  <tr style="background:${NAVY}">
+    <td colspan="4" style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 서 명 / 확 인</td>
+  </tr>
+  <tr>
+    ${hcell('작 성 자','25%')}${hcell('현 장 소 장','25%')}${hcell('감 독 관','25%')}${hcell('발 주 처','25%')}
+  </tr>
+  <tr>
+    <td style="height:40pt;border:1pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:4pt;font-size:9pt;font-family:'맑은 고딕',sans-serif;color:#888">(인)</td>
+    <td style="height:40pt;border:1pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:4pt;font-size:9pt;font-family:'맑은 고딕',sans-serif;color:#888">(인)</td>
+    <td style="height:40pt;border:1pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:4pt;font-size:9pt;font-family:'맑은 고딕',sans-serif;color:#888">(인)</td>
+    <td style="height:40pt;border:1pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:4pt;font-size:9pt;font-family:'맑은 고딕',sans-serif;color:#888">(인)</td>
+  </tr>
+</table>
+
+<div style="height:3pt;background:${NAVY}"></div>
+
+${photoHtml}
+
+</body></html>`;
+
+    // ── avgPct 재계산 (HTML 조립 후에도 사용) ──
+    const avgPctFinal=pctVals.length?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length):null;
+
+    // ── Word Blob으로 다운로드 ──
+    const blob=new Blob(['\ufeff'+html], {
+      type:'application/msword;charset=utf-8'
+    });
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
-    a.download=`공사일보_${report.date||'미정'}_${report.author||'작성자'}_No${report.no||'0'}.xlsx`;
-    a.click(); URL.revokeObjectURL(url);
-    toast('엑셀 저장 완료!');
+    a.download=`공사일보_${report.date||'미정'}_${report.author||'작성자'}_No${report.no||'0'}.doc`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('📄 Word 파일 저장 완료!');
 
-  } catch(err){
-    console.error('엑셀 생성 오류:', err);
+  }catch(err){
+    console.error('Word 생성 오류:', err);
     toast('오류: '+err.message);
   }
 }
@@ -1724,8 +1682,8 @@ function shareGeneral(){
 function shareNaverWorks(){
   const r=collectReport();
 
-  // 1단계: 엑셀 먼저 다운로드 (사진 포함)
-  generateExcel(r, photos);
+  // 1단계: Word 먼저 다운로드
+  generateWord(r, photos);
 
   // 2단계: 안내 모달 표시
   const modal=document.createElement('div');
