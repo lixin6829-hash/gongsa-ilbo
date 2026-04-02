@@ -1088,20 +1088,25 @@ function collectReport(){
 function saveReport(){
   if(!curSiteId){toast('❗ 현장을 먼저 선택해주세요'); return;}
   const r=collectReport();
-  // 사진 dataUrl 포함해서 저장 (압축됐으므로 ~80~120KB/장)
-  r.photos=photos.map(p=>({dataUrl:p.dataUrl, caption:p.caption}));
+  // 사진 캡션만 일보에 저장, dataUrl은 별도 키에 분리 저장
+  r.photos=photos.map(p=>({caption:p.caption}));
   r.photoCount=photos.length;
+
   const i=reports.findIndex(x=>x.date===r.date&&x.no===r.no);
   if(i>=0) reports[i]=r; else reports.unshift(r);
-  try{
-    saveReports();
-    toast('💾 일보가 저장되었습니다');
-  } catch(e){
-    // LocalStorage 용량 초과 시 사진 제외 후 재시도
-    r.photos=photos.map(p=>({caption:p.caption}));
-    saveReports();
-    toast('⚠️ 사진 용량 초과 — 텍스트만 저장됐습니다');
+  saveReports();
+
+  // 사진 dataUrl 별도 저장 (키: gsa_img_{siteId}_{reportId})
+  if(photos.length){
+    try{
+      const imgKey='gsa_img_'+curSiteId+'_'+r.id;
+      localStorage.setItem(imgKey, JSON.stringify(photos.map(p=>({dataUrl:p.dataUrl,caption:p.caption}))));
+    }catch(e){
+      toast('⚠️ 사진 용량 초과 — 사진 없이 텍스트만 저장됐습니다');
+      refreshHistory(); refreshCumul(); return;
+    }
   }
+  toast('💾 일보가 저장되었습니다');
   refreshHistory(); refreshCumul();
 }
 
@@ -1196,12 +1201,16 @@ function viewHistPhotos(reportId){
 }
 function deleteReport(id){
   if(!confirm('이 일보를 삭제하시겠습니까?')) return;
+  // 사진 별도 키 삭제
+  try{ localStorage.removeItem('gsa_img_'+curSiteId+'_'+id); }catch(e){}
   reports=reports.filter(r=>r.id!==id);
   saveReports(); $id('ovHist').classList.remove('on');
   refreshHistory(); refreshCumul(); toast('🗑 일보가 삭제되었습니다');
 }
 function deleteAllReports(){
   if(!confirm(`저장된 일보 ${reports.length}건을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+  // 사진 별도 키 전체 삭제
+  reports.forEach(r=>{ try{ localStorage.removeItem('gsa_img_'+curSiteId+'_'+r.id); }catch(e){} });
   reports=[];
   saveReports(); refreshHistory(); refreshCumul();
   toast('🗑 전체 일보가 삭제되었습니다');
@@ -1295,7 +1304,16 @@ function buildPreview(){
 function exportExcel(){ generateExcel(collectReport(), photos); }
 function exportExcelById(id){
   const r=reports.find(x=>x.id===id); if(!r) return;
-  generateExcel(r, (r.photos||[]).filter(p=>p.dataUrl));
+  // 별도 저장된 사진 dataUrl 불러오기
+  let savedPhotos=[];
+  try{
+    const imgKey='gsa_img_'+curSiteId+'_'+id;
+    const raw=localStorage.getItem(imgKey);
+    if(raw) savedPhotos=JSON.parse(raw);
+  }catch(e){}
+  // fallback: report.photos에 dataUrl 있으면 그것 사용
+  if(!savedPhotos.length) savedPhotos=(r.photos||[]).filter(p=>p.dataUrl);
+  generateExcel(r, savedPhotos);
 }
 
 async function generateExcel(report, photoArr){
