@@ -1348,7 +1348,7 @@ function exportWordById(id){
 }
 
 async function generateWord(report, photoArr){
-  toast('Word 생성 중...');
+  toast('Word 생성 중... (10~20초 소요)');
   try{
     const proj=report.project||{};
     const workers=(report.workers||[]).filter(w=>w.job);
@@ -1356,280 +1356,372 @@ async function generateWord(report, photoArr){
     const mats=(report.materials||[]).filter(m=>m.name);
     const photoList=(photoArr&&photoArr.length)?photoArr:(report.photos||[]).filter(p=>p.dataUrl);
 
-    // ── 색상 ──
-    const NAVY='#1A2744', NAVY2='#2D4A8A', ORANGE='#F5851F';
-    const LGRAY='#F5F6FA', MGRAY='#E2E5EE', WHITE='#FFFFFF';
-
-    // ── 1번: 공정율 합계 = 직종별 공정율 합계 ÷ 직종수 ──
+    // 공정율 계산
     const pctVals=workers.map(w=>w.pct).filter(p=>p!==null&&p!==undefined&&p!=='');
-    const avgPct=pctVals.length ? Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length) : null;
-    const pctDisp=avgPct!==null?avgPct+'%':'-';
-    const pctColor=avgPct>=100?'#16A34A':avgPct>=50?NAVY2:'#DC2626';
+    const avgPct=pctVals.length?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length):null;
 
-    // ── 헬퍼 함수 ──
-    const F=`font-family:'맑은 고딕','Malgun Gothic',sans-serif`;
-    const th=(txt,w,bg=NAVY2)=>
-      `<td style="width:${w};background:${bg};color:${WHITE};font-weight:700;text-align:center;
-        padding:3pt 4pt;border:0.75pt solid #8899BB;${F};font-size:8pt;white-space:nowrap">${txt}</td>`;
-    const td=(txt,w='',bg=WHITE,fc=NAVY,al='left',bold=false,fs='8.5pt')=>
-      `<td style="${w?'width:'+w+';':''}background:${bg};color:${fc};${bold?'font-weight:700;':''}
-        text-align:${al};padding:3pt 5pt;border:0.75pt solid #C8CDD8;${F};font-size:${fs};
-        vertical-align:middle">${txt}</td>`;
-    const lh=(txt,bg=NAVY2)=>
-      `<td style="background:${bg};color:${WHITE};font-weight:700;padding:3pt 6pt;
-        border:0.75pt solid #8899BB;${F};font-size:8pt;white-space:nowrap;text-align:center">${txt}</td>`;
+    // 사진을 base64 형태로 직렬화 (dataUrl 그대로 전달)
+    const photoData=photoList.map(p=>({
+      b64: p.dataUrl ? p.dataUrl.split(',')[1] : null,
+      ext: p.dataUrl&&p.dataUrl.includes('png') ? 'png' : 'jpeg',
+      caption: p.caption||''
+    })).filter(p=>p.b64);
 
-    // ── 작업인원 행 ──
-    let wRows='';
-    workers.forEach((w,i)=>{
-      const bg=i%2===0?WHITE:LGRAY;
-      const wp=w.pct!==null&&w.pct!==undefined?w.pct+'%':'-';
-      const wpc=w.pct>=100?'#16A34A':w.pct>=50?NAVY2:'#DC2626';
-      wRows+=`<tr>
-        ${td(w.job,'',bg,NAVY,'left',true,'8.5pt')}
-        ${td(w.mgr||0,'',bg,NAVY,'center')}
-        ${td(w.emp||0,'',bg,NAVY,'center')}
-        ${td((w.hwa&&w.hwa[0])||0,'',bg,'#444','center')}
-        ${td((w.hwa&&w.hwa[1])||0,'',bg,'#444','center')}
-        ${td((w.hwa&&w.hwa[2])||0,'',bg,'#444','center')}
-        ${td(w.cumul||0,'',bg,'#374151','center')}
-        ${td(w.sub||0,'',bg,ORANGE,'center',true)}
-        ${td(wp,'',bg,wpc,'center',true)}
-      </tr>`;
+    // Python 코드 생성 (데이터를 코드에 임베드)
+    const pythonCode=`
+import base64, io, json
+from docx import Document
+from docx.shared import Pt, Cm, RGBColor, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
+
+def rgb(h):
+    h=h.lstrip('#')
+    return RGBColor(int(h[0:2],16),int(h[2:4],16),int(h[4:6],16))
+
+NAVY='1A2744'; NAVY2='2D4A8A'; ORANGE='F5851F'
+LGRAY='F5F6FA'; MGRAY='E2E5EE'; WHITE='FFFFFF'
+GREEN='16A34A'; RED='DC2626'
+
+def shd(cell,color):
+    s=OxmlElement('w:shd'); s.set(qn('w:val'),'clear')
+    s.set(qn('w:color'),'auto'); s.set(qn('w:fill'),color)
+    cell._tc.get_or_add_tcPr().append(s)
+
+def bdr(cell,color='C0C8D8',sz=4):
+    tcPr=cell._tc.get_or_add_tcPr(); b=OxmlElement('w:tcBorders')
+    for edge in ['top','left','bottom','right']:
+        t=OxmlElement(f'w:{edge}'); t.set(qn('w:val'),'single')
+        t.set(qn('w:sz'),str(sz)); t.set(qn('w:space'),'0')
+        t.set(qn('w:color'),color); b.append(t)
+    tcPr.append(b)
+
+def mgn(cell,top=60,bottom=60,left=100,right=100):
+    tcPr=cell._tc.get_or_add_tcPr(); m=OxmlElement('w:tcMar')
+    for side,val in [('top',top),('bottom',bottom),('left',left),('right',right)]:
+        e=OxmlElement(f'w:{side}'); e.set(qn('w:w'),str(val))
+        e.set(qn('w:type'),'dxa'); m.append(e)
+    tcPr.append(m)
+
+def ct(cell,text,size=9,bold=False,color=NAVY,align='left'):
+    p=cell.paragraphs[0]
+    p.alignment={'left':WD_ALIGN_PARAGRAPH.LEFT,'center':WD_ALIGN_PARAGRAPH.CENTER,'right':WD_ALIGN_PARAGRAPH.RIGHT}[align]
+    run=p.add_run(str(text) if text is not None else '')
+    run.font.name='맑은 고딕'; run.font.size=Pt(size)
+    run.font.bold=bold; run.font.color.rgb=rgb(color)
+    rPr=run._r.get_or_add_rPr()
+    rf=OxmlElement('w:rFonts'); rf.set(qn('w:eastAsia'),'맑은 고딕')
+    rPr.insert(0,rf); mgn(cell)
+
+def ar(para,text,size=9,bold=False,color=NAVY):
+    run=para.add_run(str(text))
+    run.font.name='맑은 고딕'; run.font.size=Pt(size)
+    run.font.bold=bold; run.font.color.rgb=rgb(color)
+    rPr=run._r.get_or_add_rPr()
+    rf=OxmlElement('w:rFonts'); rf.set(qn('w:eastAsia'),'맑은 고딕')
+    rPr.insert(0,rf); return run
+
+def oline(doc):
+    p=doc.add_paragraph(); pPr=p._p.get_or_add_pPr()
+    pBdr=OxmlElement('w:pBdr')
+    b=OxmlElement('w:bottom'); b.set(qn('w:val'),'single')
+    b.set(qn('w:sz'),'18'); b.set(qn('w:color'),ORANGE)
+    pBdr.append(b); pPr.append(pBdr)
+    p.paragraph_format.space_before=Pt(0)
+    p.paragraph_format.space_after=Pt(3)
+
+def sHdr(doc,text,bg=NAVY):
+    p=doc.add_paragraph(); pPr=p._p.get_or_add_pPr()
+    s=OxmlElement('w:shd'); s.set(qn('w:val'),'clear')
+    s.set(qn('w:color'),'auto'); s.set(qn('w:fill'),bg); pPr.append(s)
+    run=p.add_run(f'  {text}')
+    run.font.name='맑은 고딕'; run.font.size=Pt(9)
+    run.font.bold=True; run.font.color.rgb=rgb(WHITE)
+    rPr=run._r.get_or_add_rPr()
+    rf=OxmlElement('w:rFonts'); rf.set(qn('w:eastAsia'),'맑은 고딕')
+    rPr.insert(0,rf)
+    p.paragraph_format.space_before=Pt(5)
+    p.paragraph_format.space_after=Pt(0)
+
+def no_bdr_tbl(tbl):
+    tblPr=tbl._tbl.find(qn('w:tblPr'))
+    if tblPr is None:
+        tblPr=OxmlElement('w:tblPr'); tbl._tbl.insert(0,tblPr)
+    tb=OxmlElement('w:tblBorders')
+    for e in ['top','left','bottom','right','insideH','insideV']:
+        x=OxmlElement(f'w:{e}'); x.set(qn('w:val'),'none'); tb.append(x)
+    tblPr.append(tb)
+
+def sp(doc,after=2):
+    p=doc.add_paragraph()
+    p.paragraph_format.space_before=Pt(0)
+    p.paragraph_format.space_after=Pt(after)
+
+# ── 데이터 ──
+d=${JSON.stringify({
+  date:report.date||'',no:report.no||'001',
+  author:report.author||'',authorTitle:report.authorTitle||'',
+  weather:report.weather||'-',tempMin:report.tempMin||'',tempMax:report.tempMax||'',
+  totalSub:report.totalSub||0,totalCumul:report.totalCumul||0,totalPct:avgPct,
+  specialNote:report.specialNote||'',
+  proj:{
+    work:proj.work||'',name:proj.name||'',client:proj.client||'',
+    contractor:proj.contractor||'',supervisor:proj.supervisor||'',
+    manager:proj.manager||'',startDate:proj.startDate||'',endDate:proj.endDate||''
+  },
+  workers:workers.map(w=>({job:w.job,mgr:w.mgr||0,emp:w.emp||0,
+    hwa:w.hwa||[0,0,0],cumul:w.cumul||0,sub:w.sub||0,pct:w.pct})),
+  works:report.works||[],
+  equips:equips.map(e=>({name:e.name,qty:e.qty||0,desc:e.desc||''})),
+  mats:mats.map(m=>({name:m.name,spec:m.spec||'',qty:m.qty||0,unit:m.unit||''}))
+})}
+photos=${JSON.stringify(photoData.slice(0,20))} # 최대 20장
+
+W=18.2
+doc=Document()
+sec=doc.sections[0]
+sec.page_width=Cm(21); sec.page_height=Cm(29.7)
+sec.left_margin=Cm(1.4); sec.right_margin=Cm(1.4)
+sec.top_margin=Cm(1.4); sec.bottom_margin=Cm(1.4)
+doc.styles['Normal'].font.name='맑은 고딕'
+doc.styles['Normal'].font.size=Pt(9)
+
+# ════ 1. 타이틀 ════
+t=doc.add_table(rows=1,cols=2); no_bdr_tbl(t)
+t.columns[0].width=Cm(W*0.55); t.columns[1].width=Cm(W*0.45)
+cl=t.rows[0].cells[0]; shd(cl,NAVY)
+cl.vertical_alignment=WD_ALIGN_VERTICAL.CENTER; mgn(cl,120,120,200,120)
+p=cl.paragraphs[0]; p.alignment=WD_ALIGN_PARAGRAPH.LEFT
+ar(p,'공  사  일  보',22,True,WHITE)
+p2=cl.add_paragraph()
+ar(p2,d['proj']['work'],8,False,'7A9FCC')
+t.rows[0].height=Cm(2.4)
+cr=t.rows[0].cells[1]; shd(cr,NAVY2)
+cr.vertical_alignment=WD_ALIGN_VERTICAL.CENTER; mgn(cr,80,80,150,100)
+info=[('작  성  일',d['date'],WHITE),
+      ('작  성  자',d['author']+(' ('+d['authorTitle']+')' if d['authorTitle'] else ''),ORANGE),
+      ('일 보 번 호','No. '+d['no'],WHITE)]
+for i,(label,val,vc) in enumerate(info):
+    p2=cr.paragraphs[0] if i==0 else cr.add_paragraph()
+    p2.paragraph_format.space_after=Pt(3)
+    ar(p2,label+'   ',7.5,False,'AAC4E0')
+    ar(p2,val,9,True,vc)
+
+oline(doc)
+
+# ════ 2. 현장정보 ════
+sHdr(doc,'■  현장 정보')
+t2=doc.add_table(rows=4,cols=4)
+t2.columns[0].width=Cm(2.0); t2.columns[1].width=Cm(W/2-2.0)
+t2.columns[2].width=Cm(2.0); t2.columns[3].width=Cm(W/2-2.0)
+proj=d['proj']
+rows_info=[
+    ('공 사 명',proj['work'],'공사현장',proj['name']),
+    ('발 주 처',proj['client'],'시 공 사',proj['contractor']),
+    ('감 독 관',proj['supervisor'],'현장소장',proj['manager']),
+    ('공사기간',(proj['startDate']+' ~ '+proj['endDate']) if proj['startDate'] else '-',
+     '날씨/기온',d['weather']+(' | '+str(d['tempMin'])+'~'+str(d['tempMax'])+'°C' if d['tempMin'] else '')),
+]
+for ri,(l1,v1,l2,v2) in enumerate(rows_info):
+    row=t2.rows[ri]; row.height=Cm(0.58)
+    for ci,(txt,is_lbl) in enumerate([(l1,True),(v1,False),(l2,True),(v2,False)]):
+        c=row.cells[ci]; shd(c,MGRAY if is_lbl else 'FFFFFF')
+        bdr(c); mgn(c,50,50,80,80)
+        ct(c,txt,8.5,is_lbl,'4A5568' if is_lbl else NAVY,'center' if is_lbl else 'left')
+sp(doc)
+
+# ════ 3. 작업인원 ════
+sHdr(doc,'■  작업 인원')
+pcts=[w['pct'] for w in d['workers'] if w.get('pct') is not None]
+avg=round(sum(pcts)/len(pcts)) if pcts else None
+pcol=GREEN if avg and avg>=100 else (NAVY2 if avg and avg>=50 else RED)
+t3=doc.add_table(rows=1+len(d['workers'])+1,cols=9)
+cws=[3.2,1.6,1.6,1.4,1.4,1.4,1.6,1.6,1.6]
+for i,w in enumerate(cws):
+    for row in t3.rows: row.cells[i].width=Cm(w)
+hdrs=['직  종','관리자','근로자','화기','신호','유도','누 적','소 계','공정율']
+for ci,h in enumerate(hdrs):
+    c=t3.rows[0].cells[ci]; shd(c,NAVY2); bdr(c,'8899BB',3)
+    mgn(c,50,50,80,80); ct(c,h,8,True,WHITE,'center')
+t3.rows[0].height=Cm(0.55)
+for ri,w in enumerate(d['workers']):
+    bg=LGRAY if ri%2 else 'FFFFFF'
+    row=t3.rows[ri+1]; row.height=Cm(0.55)
+    pct=w.get('pct'); pc=str(pct)+'%' if pct is not None else '-'
+    wpcol=GREEN if pct and pct>=100 else (NAVY2 if pct and pct>=50 else RED)
+    hwa=w.get('hwa',[0,0,0])
+    for ci,(val,fc,al,bld) in enumerate([
+        (w['job'],NAVY,'left',True),(w['mgr'],NAVY,'center',False),(w['emp'],NAVY,'center',False),
+        (hwa[0],'555555','center',False),(hwa[1],'555555','center',False),(hwa[2],'555555','center',False),
+        (w['cumul'],'374151','center',False),(w['sub'],ORANGE,'center',True),(pc,wpcol,'center',True)
+    ]):
+        c=row.cells[ci]; shd(c,bg); bdr(c); mgn(c,50,50,80,80)
+        ct(c,val,8.5,bld,fc,al)
+row=t3.rows[-1]; row.height=Cm(0.58)
+for ci,(val,fc,al,bld) in enumerate([
+    ('합  계',NAVY,'left',True),('','FFFFFF','center',False),('','FFFFFF','center',False),
+    ('','FFFFFF','center',False),('','FFFFFF','center',False),('','FFFFFF','center',False),
+    (d['totalCumul'],'374151','center',True),(d['totalSub'],ORANGE,'center',True),
+    (str(avg)+'%' if avg else '-',pcol,'center',True)
+]):
+    c=row.cells[ci]; shd(c,MGRAY); bdr(c,'8899BB',3); mgn(c,50,50,80,80)
+    if val: ct(c,val,8.5,bld,fc,al)
+sp(doc)
+
+# ════ 4. 작업내용 + 특이사항 ════
+sHdr(doc,'■  작업 내용  /  특이사항')
+t4=doc.add_table(rows=1,cols=2); no_bdr_tbl(t4)
+t4.columns[0].width=Cm(W*0.57); t4.columns[1].width=Cm(W*0.43)
+cl=t4.rows[0].cells[0]; shd(cl,'FFFFFF'); bdr(cl); mgn(cl,80,80,100,80)
+for i,w in enumerate(d['works']):
+    p2=cl.paragraphs[0] if i==0 else cl.add_paragraph()
+    ar(p2,w,9,False,NAVY); p2.paragraph_format.space_after=Pt(3)
+cr=t4.rows[0].cells[1]; shd(cr,'FFFEF5'); bdr(cr); mgn(cr,80,80,100,80)
+ar(cr.paragraphs[0],d['specialNote'],9,False,NAVY)
+t4.rows[0].height=Cm(2.5)
+sp(doc)
+
+# ════ 5. 자재 + 장비 ════
+sHdr(doc,'■  자재 입고  /  장비 투입')
+t5=doc.add_table(rows=1,cols=2); no_bdr_tbl(t5)
+t5.columns[0].width=Cm(W*0.52); t5.columns[1].width=Cm(W*0.48)
+cl=t5.rows[0].cells[0]; shd(cl,'FFFFFF'); bdr(cl); mgn(cl,80,80,100,80)
+p=cl.paragraphs[0]; ar(p,'  자재명  |  규격  |  수량  |  단위',8,True,NAVY2)
+for m in d['mats']:
+    p2=cl.add_paragraph()
+    ar(p2,f"  {m['name']}  {m['spec'] or ''}  {m['qty']} {m['unit']}",8.5,False,NAVY)
+    p2.paragraph_format.space_after=Pt(2)
+cr=t5.rows[0].cells[1]; shd(cr,'FFFFFF'); bdr(cr); mgn(cr,80,80,100,80)
+p=cr.paragraphs[0]; ar(p,'  장비명  |  대수  |  작업내용',8,True,NAVY2)
+for e in d['equips']:
+    p2=cr.add_paragraph()
+    ar(p2,f"  {e['name']}  {e['qty']}대  {e['desc']}",8.5,False,NAVY)
+    p2.paragraph_format.space_after=Pt(2)
+t5.rows[0].height=Cm(1.8)
+sp(doc)
+
+# ════ 6. 공정율 요약 ════
+sHdr(doc,'■  공정율 현황')
+t6=doc.add_table(rows=2,cols=4)
+for i in range(4):
+    for row in t6.rows: row.cells[i].width=Cm(W/4)
+lbls=['금일 투입인원','누계 인원','공  정  율','날  씨']
+vals=[str(d['totalSub'])+'명',str(d['totalCumul'])+'명',
+      str(d['totalPct'])+'%' if d['totalPct'] is not None else '-',d['weather']]
+vcols=[ORANGE,NAVY,GREEN if d['totalPct'] and d['totalPct']>=100 else NAVY2,NAVY]
+for ci,lbl in enumerate(lbls):
+    c=t6.rows[0].cells[ci]; shd(c,NAVY2); bdr(c,'8899BB',3)
+    mgn(c,50,50,80,80); ct(c,lbl,8,True,WHITE,'center')
+    t6.rows[0].height=Cm(0.52)
+for ci,(val,fc) in enumerate(zip(vals,vcols)):
+    c=t6.rows[1].cells[ci]; shd(c,'FFFFFF'); bdr(c,'8899BB',3)
+    mgn(c,80,80,80,80); ct(c,val,13,True,fc,'center')
+    t6.rows[1].height=Cm(0.85)
+sp(doc)
+
+# ════ 7. 서명란 ════
+sHdr(doc,'■  서명 / 확인')
+t7=doc.add_table(rows=2,cols=4)
+for i in range(4):
+    for row in t7.rows: row.cells[i].width=Cm(W/4)
+slbls=['작  성  자','현장소장','감  독  관','발  주  처']
+for ci,lbl in enumerate(slbls):
+    c=t7.rows[0].cells[ci]
+    shd(c,NAVY2 if ci%2==0 else '374160')
+    bdr(c,'8899BB',3); mgn(c,50,50,80,80)
+    ct(c,lbl,8,True,WHITE,'center')
+    t7.rows[0].height=Cm(0.52)
+for ci in range(4):
+    c=t7.rows[1].cells[ci]; shd(c,'FFFFFF')
+    bdr(c,'C0C8D8'); mgn(c,80,80,80,80)
+    ct(c,'(인)',9,False,'AAAAAA','center')
+    t7.rows[1].height=Cm(1.2)
+
+p_end=doc.add_paragraph(); pPr=p_end._p.get_or_add_pPr()
+s2=OxmlElement('w:shd'); s2.set(qn('w:val'),'clear')
+s2.set(qn('w:color'),'auto'); s2.set(qn('w:fill'),NAVY); pPr.append(s2)
+p_end.paragraph_format.space_before=Pt(4)
+
+# ════ 사진 페이지들 (4장씩) ════
+for pg in range(0, len(photos), 4):
+    set4=photos[pg:pg+4]
+    doc.add_page_break()
+    tp=doc.add_table(rows=1,cols=2); no_bdr_tbl(tp)
+    tp.columns[0].width=Cm(W*0.6); tp.columns[1].width=Cm(W*0.4)
+    cl=tp.rows[0].cells[0]; shd(cl,NAVY); bdr(cl,NAVY,1); mgn(cl,100,100,180,100)
+    ct(cl,'공  사  사  진  대  지',15,True,WHITE,'left')
+    tp.rows[0].height=Cm(1.0)
+    cr=tp.rows[0].cells[1]; shd(cr,NAVY2); bdr(cr,NAVY2,1); mgn(cr,80,80,100,120)
+    p_cr=cr.paragraphs[0]; p_cr.alignment=WD_ALIGN_PARAGRAPH.RIGHT
+    ar(p_cr,d['proj']['name']+'  |  '+d['date'],8,False,'AAC4E0')
+    oline(doc)
+    sp(doc,3)
+    tp2=doc.add_table(rows=4,cols=2)
+    tp2.columns[0].width=Cm(W/2); tp2.columns[1].width=Cm(W/2)
+    for i in range(4):
+        ri,ci=divmod(i,2)
+        pi=set4[i] if i<len(set4) else None
+        # 사진 셀
+        c=tp2.rows[ri*2].cells[ci]; shd(c,'EEF0F8' if pi else 'F8F8F8')
+        bdr(c,'B0BCCC',2); mgn(c,40,40,40,40)
+        tp2.rows[ri*2].height=Cm(6.2)
+        if pi and pi.get('b64'):
+            try:
+                img_bytes=base64.b64decode(pi['b64'])
+                img_stream=io.BytesIO(img_bytes)
+                p=c.paragraphs[0]; p.alignment=WD_ALIGN_PARAGRAPH.CENTER
+                run=p.add_run()
+                run.add_picture(img_stream, width=Cm(W/2-0.3))
+            except Exception as ex:
+                p=c.paragraphs[0]; p.alignment=WD_ALIGN_PARAGRAPH.CENTER
+                ar(p,'[이미지 오류]',9,False,'999999')
+        else:
+            p=c.paragraphs[0]; p.alignment=WD_ALIGN_PARAGRAPH.CENTER
+            ar(p,'',9,False,'BBBBBB')
+        # 캡션 셀
+        cc=tp2.rows[ri*2+1].cells[ci]; shd(cc,LGRAY); bdr(cc,'C0CCDD',2); mgn(cc,50,50,80,80)
+        cap=f"{pg+i+1}번.  {pi['caption'] if pi else ''}" if pi else ''
+        ct(cc,cap,8.5,True,NAVY,'center')
+        tp2.rows[ri*2+1].height=Cm(0.55)
+
+buf=io.BytesIO()
+doc.save(buf)
+buf.seek(0)
+result=base64.b64encode(buf.read()).decode()
+print(result)
+`;
+
+    // Anthropic API 호출
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{
+          role:'user',
+          content:`다음 Python 코드를 실행하고 결과(base64 문자열)만 출력하세요. 다른 텍스트 없이 base64만:\n\n\`\`\`python\n${pythonCode}\n\`\`\``
+        }]
+      })
     });
-    wRows+=`<tr style="background:${MGRAY}">
-      <td style="font-weight:700;padding:3pt 5pt;border:0.75pt solid #C8CDD8;${F};font-size:8.5pt">합&nbsp;계</td>
-      <td colspan="5" style="border:0.75pt solid #C8CDD8"></td>
-      <td style="text-align:center;border:0.75pt solid #C8CDD8;font-size:8.5pt;${F}">${report.totalCumul||0}</td>
-      <td style="text-align:center;font-weight:700;color:${ORANGE};border:0.75pt solid #C8CDD8;font-size:8.5pt;${F}">${report.totalSub||0}</td>
-      <td style="text-align:center;font-weight:700;color:${pctColor};border:0.75pt solid #C8CDD8;font-size:9pt;${F}">${pctDisp}</td>
-    </tr>`;
 
-    // ── 장비 행 ──
-    const eRows=equips.length?equips.map((e,i)=>{
-      const bg=i%2===0?WHITE:LGRAY;
-      return`<tr>${td(e.name,'55%',bg,NAVY,'left')}${td(e.qty+'대','15%',bg,ORANGE,'center',true)}${td(e.desc||'','30%',bg)}</tr>`;
-    }).join(''):
-    `<tr><td colspan="3" style="text-align:center;padding:4pt;color:#999;border:0.75pt solid #C8CDD8;${F};font-size:8pt">(없음)</td></tr>`;
+    if(!resp.ok) throw new Error(`API 오류: ${resp.status}`);
+    const data=await resp.json();
+    const b64=data.content.map(c=>c.text||'').join('').trim();
 
-    // ── 자재 행 ──
-    const mRows=mats.length?mats.map((m,i)=>{
-      const bg=i%2===0?WHITE:LGRAY;
-      return`<tr>${td(m.name,'35%',bg,NAVY,'left')}${td(m.spec||'-','20%',bg,'#666','center')}${td(m.qty,'15%',bg,ORANGE,'center',true)}${td(m.unit||'-','10%',bg,'#666','center')}</tr>`;
-    }).join(''):
-    `<tr><td colspan="4" style="text-align:center;padding:4pt;color:#999;border:0.75pt solid #C8CDD8;${F};font-size:8pt">(없음)</td></tr>`;
+    if(!b64||b64.length<100) throw new Error('Word 생성 실패');
 
-    // ── 작업내용 ──
-    const wTxt=(report.works||[]).map((w,i)=>`${i+1}. ${w}`).join('<br>');
-
-    // ══════════════════════════════════════
-    // 사진 페이지 (A4 1페이지 = 사진 4장, 2×2 배치)
-    // ══════════════════════════════════════
-    let photoPages='';
-    if(photoList.length){
-      for(let pg=0;pg<photoList.length;pg+=4){
-        const set=photoList.slice(pg,pg+4); // 최대 4장
-        // 2×2 그리드
-        let grid='';
-        for(let row=0;row<2;row++){
-          const p1=set[row*2], p2=set[row*2+1];
-          const pIdx1=pg+row*2, pIdx2=pg+row*2+1;
-          grid+=`<tr>
-            <td style="width:50%;padding:6pt;border:1.5pt solid ${MGRAY};text-align:center;vertical-align:middle;height:130pt">
-              ${p1&&p1.dataUrl
-                ?`<img src="${p1.dataUrl}" style="max-width:260pt;max-height:120pt;width:auto;height:auto;display:block;margin:0 auto">`
-                :'<div style="height:120pt;background:#F0F0F0;display:flex;align-items:center;justify-content:center;color:#CCC">-</div>'}
-            </td>
-            <td style="width:50%;padding:6pt;border:1.5pt solid ${MGRAY};text-align:center;vertical-align:middle;height:130pt">
-              ${p2&&p2.dataUrl
-                ?`<img src="${p2.dataUrl}" style="max-width:260pt;max-height:120pt;width:auto;height:auto;display:block;margin:0 auto">`
-                :''}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:4pt 6pt;border:1pt solid ${MGRAY};border-top:none;background:${LGRAY};text-align:center">
-              <span style="${F};font-size:8.5pt;font-weight:700;color:${NAVY}">${p1?pIdx1+1+'번.&nbsp;&nbsp;'+(p1.caption||''):''}</span>
-            </td>
-            <td style="padding:4pt 6pt;border:1pt solid ${MGRAY};border-top:none;background:${LGRAY};text-align:center">
-              <span style="${F};font-size:8.5pt;font-weight:700;color:${NAVY}">${p2?pIdx2+1+'번.&nbsp;&nbsp;'+(p2.caption||''):''}</span>
-            </td>
-          </tr>`;
-        }
-        photoPages+=`
-        <div style="page-break-before:always;padding:10mm 0">
-          <!-- 사진 페이지 헤더 -->
-          <table style="width:100%;border-collapse:collapse;margin-bottom:8pt">
-            <tr>
-              <td style="background:${NAVY};color:${WHITE};font-size:13pt;font-weight:700;
-                padding:8pt 14pt;letter-spacing:3pt;${F}">공&nbsp;&nbsp;사&nbsp;&nbsp;사&nbsp;&nbsp;진&nbsp;&nbsp;대&nbsp;&nbsp;지</td>
-              <td style="background:${NAVY2};color:${WHITE};font-size:8.5pt;padding:8pt 12pt;
-                text-align:right;${F}">${proj.name||''}&nbsp;&nbsp;|&nbsp;&nbsp;${report.date||''}&nbsp;&nbsp;|&nbsp;&nbsp;${report.author||''}</td>
-            </tr>
-          </table>
-          <div style="height:2pt;background:${ORANGE};margin-bottom:10pt"></div>
-          <!-- 2×2 사진 그리드 -->
-          <table style="width:100%;border-collapse:collapse;table-layout:fixed">${grid}</table>
-          <div style="text-align:right;font-size:7.5pt;color:#AAA;margin-top:6pt;${F}">
-            ${pg/4+1} / ${Math.ceil(photoList.length/4)} 페이지 &nbsp;|&nbsp; 총 ${photoList.length}장
-          </div>
-        </div>`;
-      }
-    }
-
-    // ══════════════════════════════════════
-    // 일보 페이지 HTML 조립
-    // ══════════════════════════════════════
-    const html=`<!DOCTYPE html>
-<html><head><meta charset="UTF-8">
-<style>
-  @page { size:210mm 297mm; margin:12mm 10mm 12mm 10mm; }
-  body { font-family:'맑은 고딕','Malgun Gothic',sans-serif; font-size:9pt; color:#1A2744; margin:0; }
-  table { border-collapse:collapse; width:100%; }
-  * { box-sizing:border-box; }
-</style>
-</head><body>
-
-<!-- ════ 타이틀 바 ════ -->
-<table style="margin-bottom:6pt">
-  <tr>
-    <td style="width:55%;background:${NAVY};padding:10pt 14pt;vertical-align:middle">
-      <div style="color:${WHITE};font-size:18pt;font-weight:700;letter-spacing:6pt">공사일보</div>
-      <div style="color:#7A9FCC;font-size:8pt;margin-top:2pt">${proj.work||''}</div>
-    </td>
-    <td style="width:45%;background:${NAVY2};padding:0;vertical-align:top">
-      <table style="width:100%">
-        <tr>
-          <td style="background:rgba(0,0,0,.2);color:#AAC4E0;font-size:7.5pt;padding:3.5pt 8pt;width:38%">작 성 일</td>
-          <td style="color:${WHITE};font-size:9pt;font-weight:700;padding:3.5pt 8pt;border-bottom:0.5pt solid #3A5A9A">${report.date||'-'}</td>
-        </tr>
-        <tr>
-          <td style="background:rgba(0,0,0,.2);color:#AAC4E0;font-size:7.5pt;padding:3.5pt 8pt">작 성 자</td>
-          <td style="color:${ORANGE};font-size:9pt;font-weight:700;padding:3.5pt 8pt;border-bottom:0.5pt solid #3A5A9A">${report.author||'-'}${report.authorTitle?' ('+report.authorTitle+')':''}</td>
-        </tr>
-        <tr>
-          <td style="background:rgba(0,0,0,.2);color:#AAC4E0;font-size:7.5pt;padding:3.5pt 8pt">일보번호</td>
-          <td style="color:${WHITE};font-size:9pt;font-weight:700;padding:3.5pt 8pt">No.${report.no||'001'}</td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>
-<div style="height:2.5pt;background:${ORANGE};margin-bottom:6pt"></div>
-
-<!-- ════ 현장정보 ════ -->
-<table style="margin-bottom:5pt;font-size:8.5pt">
-  <tr style="background:${NAVY}">
-    <td colspan="4" style="color:${WHITE};font-weight:700;padding:3pt 7pt;font-size:8.5pt">■ 현장 정보</td>
-  </tr>
-  <tr>
-    ${lh('공 사 명')}${td(proj.work||'-','38%',WHITE,NAVY,'left')}
-    ${lh('공사현장')}${td(proj.name||'-','38%',WHITE,NAVY,'left')}
-  </tr>
-  <tr>
-    ${lh('발 주 처')}${td(proj.client||'-','38%',WHITE)}
-    ${lh('시 공 사')}${td(proj.contractor||'-','38%',WHITE)}
-  </tr>
-  <tr>
-    ${lh('공사기간')}${td((proj.startDate&&proj.endDate)?proj.startDate+' ~ '+proj.endDate:'-','38%',WHITE)}
-    ${lh('날씨/기온')}${td((report.weather||'-')+(report.tempMin?' | '+report.tempMin+'~'+report.tempMax+'°C':''),'38%',WHITE)}
-  </tr>
-</table>
-
-<!-- ════ 작업인원 ════ -->
-<table style="margin-bottom:5pt;font-size:8.5pt">
-  <tr style="background:${NAVY}">
-    <td colspan="9" style="color:${WHITE};font-weight:700;padding:3pt 7pt;font-size:8.5pt">■ 작업 인원</td>
-  </tr>
-  <tr>
-    ${th('직  종','20%')}${th('관리자','8%')}${th('근로자','8%')}
-    ${th('화기','7%')}${th('신호','7%')}${th('유도','7%')}
-    ${th('누 적','9%')}${th('소 계','9%')}${th('공정율','9%')}
-  </tr>
-  ${wRows}
-</table>
-
-<!-- ════ 작업내용 + 특이사항 (2단) ════ -->
-<table style="margin-bottom:5pt">
-  <tr>
-    <td style="width:58%;vertical-align:top;padding-right:4pt">
-      <table style="font-size:8.5pt">
-        <tr style="background:${NAVY}"><td style="color:${WHITE};font-weight:700;padding:3pt 7pt">■ 작업 내용 / 공종</td></tr>
-        <tr><td style="padding:5pt 7pt;border:0.75pt solid #C8CDD8;line-height:1.65;min-height:38pt">${wTxt||'(없음)'}</td></tr>
-      </table>
-    </td>
-    <td style="width:42%;vertical-align:top;padding-left:4pt">
-      <table style="font-size:8.5pt">
-        <tr style="background:${NAVY2}"><td style="color:${WHITE};font-weight:700;padding:3pt 7pt">■ 특이사항 / 조치내용</td></tr>
-        <tr><td style="padding:5pt 7pt;border:0.75pt solid #C8CDD8;line-height:1.65;min-height:38pt;background:#FFFFF8">${report.specialNote||'&nbsp;'}</td></tr>
-      </table>
-    </td>
-  </tr>
-</table>
-
-<!-- ════ 자재 + 장비 (2단) ════ -->
-<table style="margin-bottom:5pt">
-  <tr>
-    <td style="width:50%;vertical-align:top;padding-right:4pt">
-      <table style="font-size:8.5pt">
-        <tr style="background:${NAVY}"><td colspan="4" style="color:${WHITE};font-weight:700;padding:3pt 7pt">■ 자재 입고</td></tr>
-        <tr>${th('자재명','38%')}${th('규격','22%')}${th('수량','18%')}${th('단위','12%')}</tr>
-        ${mRows}
-      </table>
-    </td>
-    <td style="width:50%;vertical-align:top;padding-left:4pt">
-      <table style="font-size:8.5pt">
-        <tr style="background:${NAVY}"><td colspan="3" style="color:${WHITE};font-weight:700;padding:3pt 7pt">■ 장비 투입</td></tr>
-        <tr>${th('장비명','50%')}${th('대수','18%')}${th('작업내용','32%')}</tr>
-        ${eRows}
-      </table>
-    </td>
-  </tr>
-</table>
-
-<!-- ════ 공정율 요약 바 ════ -->
-<table style="margin-bottom:5pt;font-size:8.5pt">
-  <tr style="background:${NAVY}">
-    <td colspan="4" style="color:${WHITE};font-weight:700;padding:3pt 7pt">■ 공정율 현황</td>
-  </tr>
-  <tr>
-    ${th('금일 투입인원','25%')}${th('누 계 인 원','25%')}${th('공  정  율','25%')}${th('날  씨','25%')}
-  </tr>
-  <tr>
-    <td style="text-align:center;font-size:13pt;font-weight:700;color:${ORANGE};padding:5pt;border:0.75pt solid #C8CDD8">${report.totalSub||0}명</td>
-    <td style="text-align:center;font-size:13pt;font-weight:700;color:${NAVY};padding:5pt;border:0.75pt solid #C8CDD8">${report.totalCumul||0}명</td>
-    <td style="text-align:center;font-size:14pt;font-weight:700;color:${pctColor};padding:5pt;border:0.75pt solid #C8CDD8">${pctDisp}</td>
-    <td style="text-align:center;font-size:11pt;font-weight:700;color:${NAVY};padding:5pt;border:0.75pt solid #C8CDD8">${report.weather||'-'}</td>
-  </tr>
-</table>
-
-<!-- ════ 서명란 ════ -->
-<table style="font-size:8.5pt">
-  <tr style="background:${NAVY}">
-    <td colspan="4" style="color:${WHITE};font-weight:700;padding:3pt 7pt">■ 서명 / 확인</td>
-  </tr>
-  <tr>
-    ${th('작 성 자','25%')}${th('현 장 소 장','25%')}${th('감  독  관','25%')}${th('발  주  처','25%')}
-  </tr>
-  <tr>
-    <td style="height:36pt;border:0.75pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:3pt;color:#AAA;font-size:8.5pt">(인)</td>
-    <td style="height:36pt;border:0.75pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:3pt;color:#AAA;font-size:8.5pt">(인)</td>
-    <td style="height:36pt;border:0.75pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:3pt;color:#AAA;font-size:8.5pt">(인)</td>
-    <td style="height:36pt;border:0.75pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:3pt;color:#AAA;font-size:8.5pt">(인)</td>
-  </tr>
-</table>
-<div style="height:2pt;background:${NAVY};margin-top:5pt"></div>
-
-<!-- ════ 사진 페이지들 ════ -->
-${photoPages}
-
-</body></html>`;
-
-    // ── Blob → .doc 다운로드 ──
-    const blob=new Blob(['\ufeff'+html],{type:'application/msword;charset=utf-8'});
+    // base64 → Blob → 다운로드
+    const byteStr=atob(b64);
+    const bytes=new Uint8Array(byteStr.length);
+    for(let i=0;i<byteStr.length;i++) bytes[i]=byteStr.charCodeAt(i);
+    const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
-    a.download=`공사일보_${report.date||'미정'}_${report.author||'작성자'}_No${report.no||'0'}.doc`;
+    a.download=`공사일보_${report.date||'미정'}_${report.author||'작성자'}_No${report.no||'0'}.docx`;
     a.click();
     URL.revokeObjectURL(url);
     toast('📄 Word 저장 완료!');
