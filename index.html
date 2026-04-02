@@ -331,7 +331,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
               <th style="background:#1e3830;min-width:28px">화기</th>
               <th style="background:#1e3830;min-width:28px">신호</th>
               <th style="background:#1e3830;min-width:28px">유도</th>
-              <th style="background:#1e4a6e;min-width:32px">투입<br>총계</th>
+              <th style="background:#1e4a6e;min-width:32px">투입<br>예정</th>
               <th style="background:#b84a10;min-width:28px">소계</th>
               <th style="background:#065f46;min-width:32px">공정율</th>
               <th style="width:22px"></th>
@@ -478,7 +478,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="card-body">
         <div class="mini-grid">
           <div class="mini"><div class="mini-label">누계 총 인원</div><div class="mini-val" id="cSkill" style="color:var(--orange)">0</div><div class="mini-unit">명</div></div>
-          <div class="mini"><div class="mini-label">누계 목표인원</div><div class="mini-val" id="cTech">0</div><div class="mini-unit">명</div></div>
+          <div class="mini"><div class="mini-label">투입예정인원</div><div class="mini-val" id="cTech">0</div><div class="mini-unit">명</div></div>
           <div class="mini"><div class="mini-label">누계 공정율</div><div class="mini-val" id="cLabor" style="color:#065f46">0%</div><div class="mini-unit"></div></div>
           <div class="mini" style="background:linear-gradient(135deg,#fff5eb,#fff0e0);border:1.5px solid var(--orange)">
             <div class="mini-label">작성 일수</div>
@@ -879,7 +879,15 @@ function resetForm(s){
   $id('wBody').innerHTML='';
   $id('equipList').innerHTML=''; $id('matList').innerHTML=''; $id('workList').innerHTML='';
   if($id('prgBadge')) $id('prgBadge').textContent='0%';
-  ['판넬','덕트','배관','자동제어'].forEach(n=>addWorker(n));
+
+  // 최근 저장 일보의 투입예정(target) 이월 - 직종도 그대로 유지
+  const lastReport=reports[0];
+  if(lastReport&&lastReport.workers&&lastReport.workers.length){
+    lastReport.workers.forEach(w=>{ if(w.job) addWorker(w.job, w.target||0); });
+  } else {
+    ['판넬','덕트','배관','자동제어'].forEach(n=>addWorker(n,0));
+  }
+
   addEquip(); addMat(); addWork();
   $id('rNote').value='';
   photos=[]; renderPhotoGrid(); $id('photoNote').value='';
@@ -893,7 +901,7 @@ function selW(btn){
 }
 
 // ── WORKER ──
-function addWorker(name=''){
+function addWorker(name='', initTarget=0){
   const tbody=$id('wBody');
   const tr=document.createElement('tr');
   const ni=(ph)=>`<td><input type="number" value="0" min="0" placeholder="${ph}" style="width:100%;padding:3px 1px;text-align:center;border:1px solid var(--border);border-radius:3px;font-size:11px;background:#fff;font-family:inherit" oninput="calcW()"></td>`;
@@ -902,7 +910,7 @@ function addWorker(name=''){
     ${ni('관리자')}
     ${ni('근로자')}
     ${ni('화기')}${ni('신호')}${ni('유도')}
-    <td><input type="number" value="0" min="0" placeholder="목표" style="width:100%;padding:3px 1px;text-align:center;border:1.5px solid var(--navy);border-radius:3px;font-size:11px;background:#f0f4ff;font-family:inherit;font-weight:700" oninput="calcW()"></td>
+    <td><input type="number" value="${initTarget}" min="0" placeholder="예정" style="width:100%;padding:3px 1px;text-align:center;border:1.5px solid var(--navy);border-radius:3px;font-size:11px;background:#f0f4ff;font-family:inherit;font-weight:700" oninput="calcW()"></td>
     <td style="font-weight:700;color:var(--orange);text-align:center;font-size:12px;white-space:nowrap" class="w-sub">0</td>
     <td style="text-align:center;font-size:11px;font-weight:700;white-space:nowrap" class="w-pct">-</td>
     <td><button class="rm-btn" onclick="rmRow(this)" style="padding:3px 5px;font-size:11px">✕</button></td>`;
@@ -1218,15 +1226,28 @@ function deleteAllReports(){
 
 // ── CUMUL ──
 function refreshCumul(){
-  let totalSub=0, totalTarget=0;
+  let totalSub=0;
   const workerMap={}, matRows=[], equipMap={};
-  [...reports].reverse().forEach(r=>{
-    totalSub+=(r.totalSub||0); totalTarget+=(r.totalTarget||0);
+
+  // 날짜 오름차순 정렬 (가장 최근이 [0])
+  const sorted=[...reports].sort((a,b)=>a.date>b.date?1:-1);
+  const lastReport=sorted[sorted.length-1]; // 가장 최근 일보
+
+  // 투입예정: 가산하지 않고 최근 일보의 값만 사용
+  const targetMap={}; // 직종별 최신 투입예정
+  if(lastReport){
+    (lastReport.workers||[]).forEach(w=>{
+      if(w.job) targetMap[w.job]=w.target||0;
+    });
+  }
+
+  // 소계만 누적
+  sorted.forEach(r=>{
+    totalSub+=(r.totalSub||0);
     (r.workers||[]).forEach(w=>{
       if(w.job){
-        if(!workerMap[w.job]) workerMap[w.job]={sub:0,target:0};
+        if(!workerMap[w.job]) workerMap[w.job]={sub:0};
         workerMap[w.job].sub+=w.sub||0;
-        workerMap[w.job].target+=w.target||0;
       }
     });
     (r.materials||[]).forEach(m=>{ if(m.name) matRows.push({date:r.date||'',name:m.name,spec:m.spec||'',qty:m.qty||0,unit:m.unit||''}); });
@@ -1236,11 +1257,15 @@ function refreshCumul(){
       equipMap[e.name].totalQty+=parseInt(e.qty)||0; equipMap[e.name].days+=1;
     });
   });
+
+  // 투입예정 합계 = 최근 일보 기준
+  const totalTarget=Object.values(targetMap).reduce((s,v)=>s+v,0);
   const totalPct=totalTarget>0?Math.min(Math.round(totalSub/totalTarget*100),100):0;
   const pct=totalPct;
+
   $id('cTotal').textContent=totalSub; $id('cTotal2').textContent=reports.length;
   $id('cSkill').textContent=totalSub;
-  $id('cTech').textContent=totalTarget;
+  $id('cTech').textContent=totalTarget;   // 투입예정
   $id('cLabor').textContent=pct+'%';
   $id('cDays').textContent=reports.length;
   $id('cReports').textContent=reports.length;
@@ -1249,11 +1274,16 @@ function refreshCumul(){
   $id('cPhotos').textContent=reports.reduce((s,r)=>s+(r.photoCount||0),0);
   $id('cPrgLabel').textContent=pct+'%'; $id('cPrgFill').style.width=pct+'%';
 
-  // 👷 직종별 누계
+  // 👷 직종별 누계 - 투입예정은 최근 일보 기준
   const wkeys=Object.keys(workerMap);
   $id('cWorkerTbl').innerHTML=!wkeys.length?'<div style="color:var(--gray);font-size:11px;text-align:center;padding:8px">없음</div>':`
-    <table class="dtbl"><thead><tr><th>직종</th><th>누계인원</th><th>목표합계</th><th>공정율</th></tr></thead><tbody>
-    ${wkeys.map(j=>{const w=workerMap[j];const p=w.target>0?Math.min(Math.round(w.sub/w.target*100),100):'-';return`<tr><td style="font-weight:700">${j}</td><td style="font-weight:700;color:var(--orange)">${w.sub}</td><td>${w.target}</td><td style="font-weight:700;color:#065f46">${p!=='-'?p+'%':'-'}</td></tr>`;}).join('')}
+    <table class="dtbl"><thead><tr><th>직종</th><th>누계소계</th><th>투입예정</th><th>공정율</th></tr></thead><tbody>
+    ${wkeys.map(j=>{
+      const w=workerMap[j];
+      const tgt=targetMap[j]||0;
+      const p=tgt>0?Math.min(Math.round(w.sub/tgt*100),100):'-';
+      return`<tr><td style="font-weight:700">${j}</td><td style="font-weight:700;color:var(--orange)">${w.sub}</td><td>${tgt}</td><td style="font-weight:700;color:#065f46">${p!=='-'?p+'%':'-'}</td></tr>`;
+    }).join('')}
     <tr class="total-row"><td>합계</td><td style="color:var(--orange)">${totalSub}</td><td>${totalTarget}</td><td style="color:#065f46">${pct}%</td></tr>
     </tbody></table>`;
 
@@ -1533,7 +1563,7 @@ async function generateExcel(report, photoArr){
     const ws2=wb.addWorksheet('공사사진대지');
 
     // 사진 시트 열 설정: 6열 (A~F) - 좌 3열 / 우 3열
-    for(let i=1;i<=6;i++) ws2.getColumn(i).width=22;
+    for(let i=1;i<=6;i++) ws2.getColumn(i).width=30;
 
     let r2=1;
 
@@ -1575,9 +1605,7 @@ async function generateExcel(report, photoArr){
     // 사진: 1행에 2장 (좌 A~C / 우 D~F, 각 3열)
     // 열 너비 22 * 3열 = 66 → 1열 너비 약 165px 환산 → 사진 가로 = 66 * 7.5 ≈ 495px
     // 실제 엑셀 pt 기준: 22 * 8 = 176pt per 3열
-    const IMG_W = 310;  // px - 3열(A~C) 너비에 맞춤
-    const IMG_H = 232;  // px - 4:3 비율
-    const PIC_ROW_H = 175; // pt
+    const PIC_ROW_H = 285; // pt - 사진 행 높이
     const CAP_ROW_H = 18;  // pt
 
     if(!photoList.length){
@@ -1595,8 +1623,8 @@ async function generateExcel(report, photoArr){
           const b64=p1.dataUrl.split(',')[1];
           const ext=p1.dataUrl.includes('png')?'png':'jpeg';
           ws2.addImage(wb.addImage({base64:b64,extension:ext}),{
-            tl:{col:0.08, row:r2-1+0.08},
-            ext:{width:IMG_W, height:IMG_H}
+            tl:{col:0, row:r2-1},
+            br:{col:3, row:r2}
           });
         }
 
@@ -1606,8 +1634,8 @@ async function generateExcel(report, photoArr){
           const b64=p2.dataUrl.split(',')[1];
           const ext=p2.dataUrl.includes('png')?'png':'jpeg';
           ws2.addImage(wb.addImage({base64:b64,extension:ext}),{
-            tl:{col:3+0.08, row:r2-1+0.08},
-            ext:{width:IMG_W, height:IMG_H}
+            tl:{col:3, row:r2-1},
+            br:{col:6, row:r2}
           });
         }
 
