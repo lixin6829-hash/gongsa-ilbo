@@ -1279,7 +1279,7 @@ function buildPreview(){
     <div class="srow"><span class="slabel">사진</span><span class="sval">${photos.length}장</span></div>`;
 }
 
-// ── EXCEL (새 디자인 v3 - 안정판) ──
+// ── EXCEL (새 디자인 v4 - 병합 안전판) ──
 function exportExcel(){ generateExcel(collectReport(), photos); }
 function exportExcelById(id){
   const r=reports.find(x=>x.id===id);
@@ -1290,246 +1290,235 @@ function exportExcelById(id){
 async function generateExcel(report, photoArr){
   if(!window.ExcelJS){ toast('ExcelJS 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
   toast('엑셀 생성 중...');
-
   try {
     const wb = new ExcelJS.Workbook();
     wb.creator = '공사일보앱';
     const proj = report.project||{};
-    const photoList = (photoArr&&photoArr.length) ? photoArr : (report.photos||[]).filter(p=>p.dataUrl);
+    const photoList = (photoArr&&photoArr.length)?photoArr:(report.photos||[]).filter(p=>p.dataUrl);
 
     // 색상
-    const NAVY   = 'FF1A2744';
-    const NAVY2  = 'FF2D4A8A';
-    const ORANGE = 'FFF5851F';
-    const LGRAY  = 'FFF5F6FA';
-    const MGRAY  = 'FFE2E5EE';
-    const DGRAY  = 'FF5A6480';
-    const WHITE  = 'FFFFFFFF';
-    const GREEN  = 'FF16A34A';
-    const RED    = 'FFDC2626';
+    const NAVY='FF1A2744', NAVY2='FF2D4A8A', ORANGE='FFF5851F';
+    const LGRAY='FFF5F6FA', MGRAY='FFE2E5EE', DGRAY='FF5A6480';
+    const WHITE='FFFFFFFF', GREEN='FF16A34A', RED='FFDC2626';
 
-    // 테두리
-    const T  = {style:'thin',   color:{argb:'FFCCCCCC'}};
-    const M  = {style:'medium', color:{argb:NAVY}};
-    const BA = {top:T, bottom:T, left:T, right:T};
-    const BM = {top:M, bottom:M, left:M, right:M};
+    const FL=a=>({type:'pattern',pattern:'solid',fgColor:{argb:a}});
+    const FN=(sz,bold,c)=>({name:'맑은 고딕',size:sz||9,bold:!!bold,color:{argb:c||NAVY}});
+    const AL=(h,v,w)=>({horizontal:h||'left',vertical:v||'center',wrapText:w!==false});
+    const T={style:'thin',color:{argb:'FFCCCCCC'}};
+    const M={style:'medium',color:{argb:NAVY}};
+    const BA={top:T,bottom:T,left:T,right:T};
+    const BM={top:M,bottom:M,left:M,right:M};
 
-    // 헬퍼
-    const FL = argb => ({type:'pattern', pattern:'solid', fgColor:{argb}});
-    const AL = (h,v,w) => ({horizontal:h||'left', vertical:v||'center', wrapText:w!==false});
-    const FN = (sz,bold,argb) => ({name:'맑은 고딕', size:sz||9, bold:!!bold, color:{argb:argb||NAVY}});
+    // 병합셀 추적 - 중복 방지
+    const merged=new Set();
+    function merge(ws,r1,c1,r2,c2){
+      // 이미 병합된 셀 범위와 겹치면 skip
+      const key=`${r1}:${c1}:${r2}:${c2}`;
+      if(merged.has(key)) return;
+      merged.add(key);
+      try{ ws.mergeCells(r1,c1,r2,c2); }catch(e){}
+    }
 
-    function cell(ws, addr, val, {sz=9,bold=false,fc=NAVY,bg=null,h='left',v='center',wrap=true,border=BA}={}){
-      const c = ws.getCell(addr);
-      if(val !== undefined) c.value = val;
-      c.font      = FN(sz, bold, fc);
-      c.alignment = AL(h, v, wrap);
-      if(bg)     c.fill   = FL(bg);
-      if(border) c.border = border;
+    // 셀 스타일 적용 (숫자 좌표 사용)
+    function sc(ws,row,col,val,opts={}){
+      const c=ws.getCell(row,col);
+      if(val!==undefined) c.value=val;
+      c.font=FN(opts.sz||9,opts.bold,opts.fc||NAVY);
+      c.alignment=AL(opts.h||'left',opts.v||'center',opts.wrap!==false);
+      if(opts.bg) c.fill=FL(opts.bg);
+      c.border=opts.bdr||BA;
       return c;
     }
 
-    function hdr(ws, row, startCol, endCol, text, bg=NAVY){
-      ws.mergeCells(`${startCol}${row}:${endCol}${row}`);
-      cell(ws, `${startCol}${row}`, text, {sz:9, bold:true, fc:WHITE, bg, h:'left', border:BM});
-      ws.getRow(row).height = 16;
+    // 병합+스타일 한번에
+    function msc(ws,r1,c1,r2,c2,val,opts={}){
+      merge(ws,r1,c1,r2,c2);
+      return sc(ws,r1,c1,val,opts);
     }
 
-    function label(ws, addr, text){ cell(ws, addr, text, {sz:8, bold:true, fc:DGRAY, bg:MGRAY, h:'center', border:BA}); }
-    function val(ws, addr, text, opts={}){ cell(ws, addr, text, {sz:9, fc:NAVY, bg:WHITE, h:'left', ...opts, border:BA}); }
+    // 섹션 헤더 (전체너비 A~R = 1~18)
+    function secRow(ws,row,text,bg){
+      ws.getRow(row).height=16;
+      msc(ws,row,1,row,18,text,{sz:9,bold:true,fc:WHITE,bg:bg||NAVY,h:'left',bdr:BM});
+    }
 
-    // ══════════════════════════
+    // 소헤더 (라벨)
+    function lbl(ws,row,c1,c2,text){
+      msc(ws,row,c1,row,c2,text,{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
+    }
+    function vll(ws,row,c1,c2,text,opts={}){
+      msc(ws,row,c1,row,c2,text,{sz:9,fc:NAVY,bg:WHITE,h:opts.h||'left',bdr:BA,...opts});
+    }
+
+    // ══════════════════════
     // 시트 생성
-    // ══════════════════════════
-    const ws = wb.addWorksheet('공사일보');
+    // ══════════════════════
+    const ws=wb.addWorksheet('공사일보');
+    // 열 너비 18열 (A~R)
+    [3,3,6,5,4,4,4,4,4,5,5,4,4,4,4,4,4,3].forEach((w,i)=>ws.getColumn(i+1).width=w);
 
-    // 열 너비 A~R (18열)
-    [3,3,7,6,4,4,4,4,4,6,6,4,4,4,4,4,4,3].forEach((w,i)=>ws.getColumn(i+1).width=w);
+    let R=1; // 현재 행
 
-    // ── 타이틀 블록 (행1~5) ──
-    ws.getRow(1).height = 8;
+    // ── 상단 여백 ──
+    ws.getRow(R).height=8; R++;
 
-    ws.mergeCells('A2:J5');
-    cell(ws,'A2','공  사  일  보',{sz:24,bold:true,fc:WHITE,bg:NAVY,h:'center',v:'middle',border:BM});
-    [2,3,4,5].forEach(r=>ws.getRow(r).height=16);
+    // ── 타이틀 행2~5 ──
+    // 좌: 공사일보 (A~J, col 1~10)
+    msc(ws,R,1,R+3,10,'공  사  일  보',{sz:22,bold:true,fc:WHITE,bg:NAVY,h:'center',v:'middle',bdr:BM});
+    // 우 빈 영역
+    msc(ws,R,11,R,18,'',{bg:NAVY,bdr:BM});
+    ws.getRow(R).height=16; R++;
 
-    ws.mergeCells('K2:R2');
-    cell(ws,'K2','',{bg:NAVY,border:BM});
+    // 작성일
+    lbl(ws,R,11,14,'작  성  일');
+    vll(ws,R,15,18,report.date||'',{h:'center',bold:true});
+    ws.getRow(R).height=14; R++;
 
-    ws.mergeCells('K3:N3'); ws.mergeCells('O3:R3');
-    label(ws,'K3','작  성  일'); val(ws,'O3',report.date||'',{fc:NAVY,bold:true,h:'center'});
+    // 작성자
+    lbl(ws,R,11,14,'작  성  자');
+    vll(ws,R,15,18,(report.author||'')+(report.authorTitle?' ('+report.authorTitle+')':''),{h:'center',bold:true,fc:ORANGE});
+    ws.getRow(R).height=14; R++;
 
-    ws.mergeCells('K4:N4'); ws.mergeCells('O4:R4');
-    label(ws,'K4','작  성  자'); val(ws,'O4',(report.author||'')+(report.authorTitle?' ('+report.authorTitle+')':''),{fc:ORANGE,bold:true,h:'center'});
+    // 일보번호
+    lbl(ws,R,11,14,'일  보  번  호');
+    vll(ws,R,15,18,'No. '+(report.no||'001'),{h:'center',bold:true});
+    ws.getRow(R).height=14; R++;
 
-    ws.mergeCells('K5:N5'); ws.mergeCells('O5:R5');
-    label(ws,'K5','일  보  번  호'); val(ws,'O5','No. '+(report.no||'001'),{fc:NAVY,bold:true,h:'center'});
+    // 오렌지 라인
+    msc(ws,R,1,R,18,'',{bg:ORANGE,bdr:{top:{style:'none'},bottom:{style:'none'},left:{style:'none'},right:{style:'none'}}});
+    ws.getRow(R).height=4; R++;
+    ws.getRow(R).height=5; R++;
 
-    // 오렌지 구분선
-    ws.mergeCells('A6:R6');
-    cell(ws,'A6','',{bg:ORANGE,border:{top:{style:'none'},bottom:{style:'none'},left:{style:'none'},right:{style:'none'}}});
-    ws.getRow(6).height=4;
-    ws.getRow(7).height=6;
+    // ── 현장정보 ──
+    secRow(ws,R,'[  현  장  정  보  ]'); R++;
 
-    // ── 현장정보 (행8~13) ──
-    hdr(ws,8,'A','R','[  현장 정보  ]');
-
-    const infoData = [
-      [9,'A9','공 사 명','C9','공 사 명 (전체)',proj.work||'','K9','공사현장','M9',proj.name||''],
-      [10,'A10','발 주 처','C10','발주처',proj.client||'','K10','시 공 사','M10',proj.contractor||''],
-      [11,'A11','감 독 관','C11','감독관',proj.supervisor||'','K11','현장소장','M11',proj.manager||''],
-      [12,'A12','공사기간','C12','공사기간',(proj.startDate&&proj.endDate)?proj.startDate+' ~ '+proj.endDate:'','K12','날  씨 / 기온','M12',(report.weather||'-')+(report.tempMin?' | '+report.tempMin+'~'+report.tempMax+'°C':'')],
+    const infoRows=[
+      ['공 사 명', proj.work||'',     '공사현장', proj.name||''],
+      ['발 주 처', proj.client||'',   '시 공 사',  proj.contractor||''],
+      ['감 독 관', proj.supervisor||'','현장소장', proj.manager||''],
+      ['공사기간', (proj.startDate&&proj.endDate)?proj.startDate+' ~ '+proj.endDate:'',
+       '날씨/기온', (report.weather||'-')+(report.tempMin?' | '+report.tempMin+'~'+report.tempMax+'C':'')]
     ];
-
-    infoData.forEach(([rowN, la,lt, va,vt, vv, lb,lbt, vb, vbv])=>{
-      ws.getRow(rowN).height=15;
-      ws.mergeCells(`${la}:B${rowN}`); ws.mergeCells(`${va}:J${rowN}`);
-      ws.mergeCells(`${lb}:L${rowN}`); ws.mergeCells(`${vb}:R${rowN}`);
-      label(ws,la,lt); val(ws,va,vv,{h:'left'});
-      label(ws,lb,lbt); val(ws,vb,vbv,{h:'left'});
+    infoRows.forEach(([l1,v1,l2,v2])=>{
+      lbl(ws,R,1,2,l1);  vll(ws,R,3,10,v1);
+      lbl(ws,R,11,12,l2); vll(ws,R,13,18,v2);
+      ws.getRow(R).height=15; R++;
     });
 
-    ws.getRow(13).height=5;
+    ws.getRow(R).height=5; R++;
 
-    // ── 작업인원 (행14~) ──
-    let R = 14;
-    hdr(ws,R,'A','R','[  작업 인원  ]'); R++;
+    // ── 작업인원 ──
+    secRow(ws,R,'[  작  업  인  원  ]'); R++;
 
     // 헤더
     ws.getRow(R).height=13;
-    const wCols = [['A','D','직  종'],['E','E','관리자'],['F','F','근로자'],
-                   ['G','G','화기감시자'],['H','H','신호수'],['I','I','유도원'],
-                   ['J','J','투입목표'],['K','K','금일소계'],['L','L','공정율'],
-                   ['M','R','비  고']];
-    wCols.forEach(([s,e,txt])=>{
-      if(s!==e) ws.mergeCells(`${s}${R}:${e}${R}`);
-      cell(ws,`${s}${R}`,txt,{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',border:BA});
-    });
+    msc(ws,R,1,R,4,'직  종',{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',bdr:BA});
+    [['E',5,'관리자'],['F',6,'근로자'],['G',7,'화기감시'],['H',8,'신호수'],
+     ['I',9,'유도원'],['J',10,'목표'],['K',11,'소계'],['L',12,'공정율']
+    ].forEach(([,col,txt])=>sc(ws,R,col,txt,{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',bdr:BA}));
+    msc(ws,R,13,R,18,'비  고',{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',bdr:BA});
     R++;
 
-    // 인원 데이터 행
-    const workers = report.workers||[];
+    const workers=report.workers||[];
     workers.forEach((w,idx)=>{
       if(!w.job) return;
       ws.getRow(R).height=13;
-      const bg = idx%2===0 ? WHITE : LGRAY;
-      ws.mergeCells(`A${R}:D${R}`);
-      ws.mergeCells(`M${R}:R${R}`);
-      cell(ws,`A${R}`,w.job,      {sz:9,fc:NAVY,bg,h:'left',border:BA});
-      cell(ws,`E${R}`,w.mgr||0,   {sz:9,fc:DGRAY,bg,h:'center',border:BA});
-      cell(ws,`F${R}`,w.emp||0,   {sz:9,fc:DGRAY,bg,h:'center',border:BA});
-      cell(ws,`G${R}`,(w.hwa&&w.hwa[0])||0,{sz:9,fc:DGRAY,bg,h:'center',border:BA});
-      cell(ws,`H${R}`,(w.hwa&&w.hwa[1])||0,{sz:9,fc:DGRAY,bg,h:'center',border:BA});
-      cell(ws,`I${R}`,(w.hwa&&w.hwa[2])||0,{sz:9,fc:DGRAY,bg,h:'center',border:BA});
-      cell(ws,`J${R}`,w.target||0,{sz:9,fc:DGRAY,bg,h:'center',border:BA});
-      cell(ws,`K${R}`,w.sub||0,   {sz:9,bold:true,fc:NAVY,bg,h:'center',border:BA});
+      const bg=idx%2===0?WHITE:LGRAY;
+      msc(ws,R,1,R,4,w.job,{sz:9,fc:NAVY,bg,h:'left',bdr:BA});
+      sc(ws,R,5,w.mgr||0,{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
+      sc(ws,R,6,w.emp||0,{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
+      sc(ws,R,7,(w.hwa&&w.hwa[0])||0,{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
+      sc(ws,R,8,(w.hwa&&w.hwa[1])||0,{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
+      sc(ws,R,9,(w.hwa&&w.hwa[2])||0,{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
+      sc(ws,R,10,w.target||0,{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
+      sc(ws,R,11,w.sub||0,{sz:9,bold:true,fc:NAVY,bg,h:'center',bdr:BA});
       const pct=w.pct||0;
-      const pfc = pct>=100?GREEN : pct>=50?NAVY : RED;
-      cell(ws,`L${R}`,pct+'%',    {sz:9,bold:true,fc:pfc,bg,h:'center',border:BA});
-      cell(ws,`M${R}`,'',         {sz:8,fc:DGRAY,bg,h:'left',border:BA});
+      sc(ws,R,12,pct+'%',{sz:9,bold:true,fc:pct>=100?GREEN:pct>=50?NAVY:RED,bg,h:'center',bdr:BA});
+      msc(ws,R,13,R,18,'',{sz:8,bg,h:'left',bdr:BA});
       R++;
     });
 
     // 합계행
     ws.getRow(R).height=14;
-    ws.mergeCells(`A${R}:D${R}`); ws.mergeCells(`M${R}:R${R}`);
-    cell(ws,`A${R}`,'합  계',{sz:9,bold:true,fc:WHITE,bg:NAVY,h:'center',border:BM});
-    ['E','F','G','H','I'].forEach(col=>cell(ws,`${col}${R}`,'',{bg:MGRAY,border:BA}));
-    cell(ws,`J${R}`,report.totalTarget||0,{sz:9,bold:true,fc:DGRAY,bg:MGRAY,h:'center',border:BA});
-    cell(ws,`K${R}`,report.totalSub||0,{sz:9,bold:true,fc:WHITE,bg:ORANGE,h:'center',border:BM});
+    msc(ws,R,1,R,4,'합  계',{sz:9,bold:true,fc:WHITE,bg:NAVY,h:'center',bdr:BM});
+    [5,6,7,8,9].forEach(col=>sc(ws,R,col,'',{bg:MGRAY,bdr:BA}));
+    sc(ws,R,10,report.totalTarget||0,{sz:9,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
+    sc(ws,R,11,report.totalSub||0,{sz:9,bold:true,fc:WHITE,bg:ORANGE,h:'center',bdr:BM});
     const tp=report.totalPct||0;
-    cell(ws,`L${R}`,tp+'%',{sz:9,bold:true,fc:WHITE,bg:tp>=100?GREEN:NAVY,h:'center',border:BM});
-    cell(ws,`M${R}`,'',{bg:MGRAY,border:BA});
+    sc(ws,R,12,tp+'%',{sz:9,bold:true,fc:WHITE,bg:tp>=100?GREEN:NAVY,h:'center',bdr:BM});
+    msc(ws,R,13,R,18,'',{bg:MGRAY,bdr:BA});
     R++;
 
-    ws.getRow(R).height=6; R++;
+    ws.getRow(R).height=5; R++;
 
-    // ── 작업내용 (행~) ──
-    hdr(ws,R,'A','R','[  작업 내용 / 공종  ]'); R++;
-    ws.mergeCells(`A${R}:R${R+13}`);
+    // ── 작업내용 ──
+    secRow(ws,R,'[  작  업  내  용  /  공  종  ]'); R++;
     const workTxt=(report.works||[]).map((w,i)=>`${i+1}. ${w}`).join('\n')||'(없음)';
-    cell(ws,`A${R}`,workTxt,{sz:9,fc:NAVY,bg:WHITE,h:'left',v:'top',wrap:true,border:BM});
-    for(let r=R;r<=R+13;r++) ws.getRow(r).height=12;
-    R+=14;
+    msc(ws,R,1,R+12,18,workTxt,{sz:9,fc:NAVY,bg:WHITE,h:'left',v:'top',wrap:true,bdr:BM});
+    for(let r=R;r<=R+12;r++) ws.getRow(r).height=12;
+    R+=13;
 
-    ws.getRow(R).height=6; R++;
+    ws.getRow(R).height=5; R++;
 
-    // ── 자재입고 / 특이사항 ──
-    ws.mergeCells(`A${R}:I${R}`); ws.mergeCells(`J${R}:R${R}`);
-    cell(ws,`A${R}`,'[  자재 입고  ]',{sz:9,bold:true,fc:WHITE,bg:NAVY,h:'left',border:BM});
-    cell(ws,`J${R}`,'[  특이사항 / 조치내용  ]',{sz:9,bold:true,fc:WHITE,bg:NAVY2,h:'left',border:BM});
+    // ── 자재 / 특이사항 ──
+    msc(ws,R,1,R,9,'[  자  재  입  고  ]',{sz:9,bold:true,fc:WHITE,bg:NAVY,h:'left',bdr:BM});
+    msc(ws,R,10,R,18,'[  특이사항  /  조치내용  ]',{sz:9,bold:true,fc:WHITE,bg:NAVY2,h:'left',bdr:BM});
     ws.getRow(R).height=16; R++;
 
     const matTxt=(report.materials||[]).filter(m=>m.name)
       .map(m=>`- ${m.name}${m.spec?' ('+m.spec+')':''} ${m.qty||''} ${m.unit||''}`).join('\n')||'(없음)';
-    ws.mergeCells(`A${R}:I${R+7}`); ws.mergeCells(`J${R}:R${R+7}`);
-    cell(ws,`A${R}`,matTxt,{sz:9,fc:NAVY,bg:WHITE,h:'left',v:'top',wrap:true,border:BM});
-    cell(ws,`J${R}`,report.specialNote||'',{sz:9,fc:NAVY,bg:'FFFFFDF7',h:'left',v:'top',wrap:true,border:BM});
+    msc(ws,R,1,R+7,9,matTxt,{sz:9,fc:NAVY,bg:WHITE,h:'left',v:'top',wrap:true,bdr:BM});
+    msc(ws,R,10,R+7,18,report.specialNote||'',{sz:9,fc:NAVY,bg:'FFFFFDF7',h:'left',v:'top',wrap:true,bdr:BM});
     for(let r=R;r<=R+7;r++) ws.getRow(r).height=12;
     R+=8;
 
-    ws.getRow(R).height=6; R++;
+    ws.getRow(R).height=5; R++;
 
     // ── 장비 ──
-    hdr(ws,R,'A','R','[  장비 투입 현황  ]'); R++;
+    secRow(ws,R,'[  장  비  투  입  현  황  ]'); R++;
     ws.getRow(R).height=13;
-    ws.mergeCells(`A${R}:F${R}`); ws.mergeCells(`G${R}:H${R}`); ws.mergeCells(`I${R}:R${R}`);
-    cell(ws,`A${R}`,'장  비  명',{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',border:BA});
-    cell(ws,`G${R}`,'대  수',    {sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',border:BA});
-    cell(ws,`I${R}`,'작  업  내  용',{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',border:BA});
+    msc(ws,R,1,R,6,'장  비  명',{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',bdr:BA});
+    msc(ws,R,7,R,8,'대  수',{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',bdr:BA});
+    msc(ws,R,9,R,18,'작  업  내  용',{sz:8,bold:true,fc:WHITE,bg:NAVY2,h:'center',bdr:BA});
     R++;
 
     const equips=(report.equips||[]).filter(e=>e.name);
     if(!equips.length){
-      ws.mergeCells(`A${R}:R${R}`);
-      cell(ws,`A${R}`,'(장비 없음)',{sz:9,fc:DGRAY,bg:LGRAY,h:'center',border:BA});
-      ws.getRow(R).height=13; R++;
+      ws.getRow(R).height=13;
+      msc(ws,R,1,R,18,'(장비 없음)',{sz:9,fc:DGRAY,bg:LGRAY,h:'center',bdr:BA}); R++;
     } else {
       equips.forEach((e,idx)=>{
         ws.getRow(R).height=13;
         const bg=idx%2===0?WHITE:LGRAY;
-        ws.mergeCells(`A${R}:F${R}`); ws.mergeCells(`G${R}:H${R}`); ws.mergeCells(`I${R}:R${R}`);
-        cell(ws,`A${R}`,e.name,{sz:9,fc:NAVY,bg,h:'left',border:BA});
-        cell(ws,`G${R}`,String(e.qty||0)+'대',{sz:9,fc:DGRAY,bg,h:'center',border:BA});
-        cell(ws,`I${R}`,e.desc||'',{sz:9,fc:NAVY,bg,h:'left',border:BA});
+        msc(ws,R,1,R,6,e.name,{sz:9,fc:NAVY,bg,h:'left',bdr:BA});
+        msc(ws,R,7,R,8,String(e.qty||0)+'대',{sz:9,fc:DGRAY,bg,h:'center',bdr:BA});
+        msc(ws,R,9,R,18,e.desc||'',{sz:9,fc:NAVY,bg,h:'left',bdr:BA});
         R++;
       });
     }
 
-    ws.getRow(R).height=6; R++;
+    ws.getRow(R).height=5; R++;
 
     // ── 공정율 요약 ──
-    hdr(ws,R,'A','R','[  공정율 현황  ]'); R++;
-
+    secRow(ws,R,'[  공  정  율  현  황  ]'); R++;
     ws.getRow(R).height=14;
-    const pSumHdrs=[['A','D','금일 공정율'],['E','H','누계 공정율'],['I','L','금일 투입인원'],['M','R','목표 인원']];
-    pSumHdrs.forEach(([s,e,t])=>{
-      ws.mergeCells(`${s}${R}:${e}${R}`);
-      cell(ws,`${s}${R}`,t,{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',border:BA});
-    });
+    [['금일 공정율',1,4],['누계 공정율',5,9],['금일 투입인원',10,13],['목표 인원',14,18]]
+      .forEach(([t,c1,c2])=>{ msc(ws,R,c1,R,c2,t,{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA}); });
     R++;
 
     ws.getRow(R).height=22;
-    const pSumVals=[
-      ['A','D',tp+'%',ORANGE],
-      ['E','H',tp+'%',NAVY],
-      ['I','L',(report.totalSub||0)+'명',NAVY],
-      ['M','R',(report.totalTarget||0)+'명',DGRAY]
-    ];
-    pSumVals.forEach(([s,e,v,c])=>{
-      ws.mergeCells(`${s}${R}:${e}${R}`);
-      cell(ws,`${s}${R}`,v,{sz:14,bold:true,fc:c,bg:WHITE,h:'center',border:BM});
-    });
+    [[tp+'%',1,4,ORANGE],[tp+'%',5,9,NAVY],[(report.totalSub||0)+'명',10,13,NAVY],[(report.totalTarget||0)+'명',14,18,DGRAY]]
+      .forEach(([v,c1,c2,fc])=>{ msc(ws,R,c1,R,c2,v,{sz:14,bold:true,fc,bg:WHITE,h:'center',bdr:BM}); });
     R++;
 
-    ws.getRow(R).height=6; R++;
+    ws.getRow(R).height=5; R++;
 
     // ── 서명란 ──
-    hdr(ws,R,'A','R','[  서명 / 확인  ]'); R++;
+    secRow(ws,R,'[  서  명  /  확  인  ]'); R++;
     ws.getRow(R).height=40;
-    [['A','D','작 성 자'],['E','I','현장소장'],['J','N','감 독 관'],['O','R','발 주 처']].forEach(([s,e,lbl])=>{
-      ws.mergeCells(`${s}${R}:${e}${R}`);
-      const c=ws.getCell(`${s}${R}`);
+    [['작 성 자',1,4],['현장소장',5,9],['감 독 관',10,13],['발 주 처',14,18]].forEach(([lbl,c1,c2])=>{
+      merge(ws,R,c1,R,c2);
+      const c=ws.getCell(R,c1);
       c.value=lbl+'\n\n\n(인)';
       c.font=FN(9,true,DGRAY); c.fill=FL(LGRAY);
       c.alignment={horizontal:'center',vertical:'top',wrapText:true};
@@ -1538,50 +1527,39 @@ async function generateExcel(report, photoArr){
     R++;
 
     // 하단 바
-    ws.mergeCells(`A${R}:R${R}`);
-    ws.getCell(`A${R}`).fill=FL(NAVY); ws.getRow(R).height=4;
-    R+=2;
+    msc(ws,R,1,R,18,'',{bg:NAVY,bdr:{top:{style:'none'},bottom:{style:'none'},left:{style:'none'},right:{style:'none'}}});
+    ws.getRow(R).height=4; R+=2;
 
-    // ══════════════════════════
+    // ══════════════════════
     // 공사사진 섹션
-    // ══════════════════════════
-
-    // 사진 타이틀
-    ws.mergeCells(`A${R}:R${R}`);
-    cell(ws,`A${R}`,'공  사  사  진  대  지',{sz:18,bold:true,fc:WHITE,bg:NAVY,h:'center',v:'middle',border:BM});
+    // ══════════════════════
+    msc(ws,R,1,R,18,'공  사  사  진  대  지',{sz:18,bold:true,fc:WHITE,bg:NAVY,h:'center',v:'middle',bdr:BM});
     ws.getRow(R).height=28; R++;
 
-    ws.mergeCells(`A${R}:R${R}`);
-    ws.getCell(`A${R}`).fill=FL(ORANGE); ws.getRow(R).height=4; R++;
+    msc(ws,R,1,R,18,'',{bg:ORANGE,bdr:{top:{style:'none'},bottom:{style:'none'},left:{style:'none'},right:{style:'none'}}});
+    ws.getRow(R).height=4; R++;
 
     // 현장정보 요약
     ws.getRow(R).height=14;
-    ws.mergeCells(`A${R}:B${R}`); ws.mergeCells(`C${R}:I${R}`);
-    ws.mergeCells(`J${R}:K${R}`); ws.mergeCells(`L${R}:R${R}`);
-    label(ws,`A${R}`,'현장명'); val(ws,`C${R}`,proj.name||'',{h:'left'});
-    label(ws,`J${R}`,'작업일자'); val(ws,`L${R}`,report.date||'',{h:'center'});
+    lbl(ws,R,1,2,'현장명'); vll(ws,R,3,9,proj.name||'');
+    lbl(ws,R,10,11,'작업일자'); vll(ws,R,12,18,report.date||'',{h:'center'});
     R++;
 
     ws.getRow(R).height=14;
-    ws.mergeCells(`A${R}:B${R}`); ws.mergeCells(`C${R}:I${R}`);
-    ws.mergeCells(`J${R}:K${R}`); ws.mergeCells(`L${R}:R${R}`);
-    label(ws,`A${R}`,'작성자'); val(ws,`C${R}`,report.author||'',{h:'left'});
-    label(ws,`J${R}`,'날씨'); val(ws,`L${R}`,report.weather||'',{h:'center'});
+    lbl(ws,R,1,2,'작성자'); vll(ws,R,3,9,report.author||'');
+    lbl(ws,R,10,11,'날씨'); vll(ws,R,12,18,report.weather||'',{h:'center'});
     R++;
 
     ws.getRow(R).height=6; R++;
 
-    // 사진 3열 배치
-    const IMG_W=188, IMG_H=142;
-    const PH=108, CH=14;
-    // 열 위치: A(0), G(6), M(12) 기준
-    const picCols=[0,6,12];
-    const capStart=['A','G','M'];
-    const capEnd2=['F','L','R'];
+    // 사진 배치 (3열)
+    const IMG_W=188,IMG_H=142,PH=108,CH=14;
+    // col 1(A), 7(G), 13(M) 기준 - 각 6열씩
+    const picCols=[0,6,12]; // 0-based
+    const capC1=[1,7,13]; const capC2=[6,12,18];
 
     if(!photoList.length){
-      ws.mergeCells(`A${R}:R${R+2}`);
-      cell(ws,`A${R}`,'(업로드된 사진이 없습니다)',{sz:10,fc:DGRAY,bg:LGRAY,h:'center',v:'middle',border:BM});
+      msc(ws,R,1,R+2,18,'(업로드된 사진이 없습니다)',{sz:10,fc:DGRAY,bg:LGRAY,h:'center',v:'middle',bdr:BM});
       ws.getRow(R).height=40;
     } else {
       for(let i=0;i<photoList.length;i+=3){
@@ -1591,45 +1569,37 @@ async function generateExcel(report, photoArr){
           if(!p||!p.dataUrl) continue;
           const b64=p.dataUrl.split(',')[1];
           const ext=p.dataUrl.includes('png')?'png':'jpeg';
-          const imgId=wb.addImage({base64:b64, extension:ext});
-          ws.addImage(imgId,{
-            tl:{col:picCols[j]+0.1, row:R-1+0.1},
-            ext:{width:IMG_W, height:IMG_H}
-          });
+          const imgId=wb.addImage({base64:b64,extension:ext});
+          ws.addImage(imgId,{tl:{col:picCols[j]+0.1,row:R-1+0.1},ext:{width:IMG_W,height:IMG_H}});
         }
-        // 캡션
         const cR=R+1;
         ws.getRow(cR).height=CH;
         for(let j=0;j<3;j++){
           const p=photoList[i+j]; if(!p) continue;
-          ws.mergeCells(`${capStart[j]}${cR}:${capEnd2[j]}${cR}`);
-          cell(ws,`${capStart[j]}${cR}`,(i+j+1)+'번. '+(p.caption||''),
-            {sz:8,fc:DGRAY,bg:LGRAY,h:'center',border:BA});
+          msc(ws,cR,capC1[j],cR,capC2[j],(i+j+1)+'번.  '+(p.caption||''),
+            {sz:8,fc:DGRAY,bg:LGRAY,h:'center',bdr:BA});
         }
         R+=2;
         if(i+3<photoList.length){ ws.getRow(R).height=8; R++; }
       }
     }
 
-    // 최하단
     R++;
-    ws.mergeCells(`A${R}:R${R}`);
-    ws.getCell(`A${R}`).fill=FL(NAVY); ws.getRow(R).height=4;
+    msc(ws,R,1,R,18,'',{bg:NAVY,bdr:{top:{style:'none'},bottom:{style:'none'},left:{style:'none'},right:{style:'none'}}});
+    ws.getRow(R).height=4;
 
     // 파일 저장
-    const buf  = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href=url;
-    a.download=`공사일보_${report.date||'미정'}_${report.author||'작성자'}_No${report.no||'0'}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=`공사일보_${report.date||'미정'}_${report.author||'작성자'}_No${report.no||'0'}.xlsx`;
+    a.click(); URL.revokeObjectURL(url);
     toast('엑셀 저장 완료!');
 
   } catch(err){
     console.error('엑셀 생성 오류:', err);
-    toast('엑셀 생성 중 오류: '+err.message);
+    toast('오류: '+err.message);
   }
 }
 
