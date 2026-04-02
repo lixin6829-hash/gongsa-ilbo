@@ -879,7 +879,7 @@ function resetForm(s){
   $id('wBody').innerHTML='';
   $id('equipList').innerHTML=''; $id('matList').innerHTML=''; $id('workList').innerHTML='';
   if($id('prgBadge')) $id('prgBadge').textContent='0%';
-  ['철근공','형틀목공','콘크리트공','일반작업'].forEach(n=>addWorker(n));
+  ['판넬','덕트','배관','자동제어'].forEach(n=>addWorker(n));
   addEquip(); addMat(); addWork();
   $id('rNote').value='';
   photos=[]; renderPhotoGrid(); $id('photoNote').value='';
