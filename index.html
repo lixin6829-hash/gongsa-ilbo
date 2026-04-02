@@ -943,7 +943,7 @@ function calcW(){
   totals.forEach((v,i)=>{ const el=$id('f'+i); if(el) el.textContent=v; });
   if($id('fCumul')) $id('fCumul').textContent=totalCumul;
   if($id('fAll')) $id('fAll').textContent=totalSub;
-  // 전체 공정율 = 입력된 공정율의 평균 (없으면 '-')
+  // 전체 공정율 = 입력된 공정율 합계 ÷ 직종수 (없으면 '-')
   const avgPct=pctCount>0?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctCount):null;
   if($id('prgBadge')){
     $id('prgBadge').textContent=avgPct!==null?avgPct+'%':'-';
@@ -1356,287 +1356,290 @@ async function generateWord(report, photoArr){
     const mats=(report.materials||[]).filter(m=>m.name);
     const photoList=(photoArr&&photoArr.length)?photoArr:(report.photos||[]).filter(p=>p.dataUrl);
 
-    // ── 색상 변수 ──
+    // ── 색상 ──
     const NAVY='#1A2744', NAVY2='#2D4A8A', ORANGE='#F5851F';
     const LGRAY='#F5F6FA', MGRAY='#E2E5EE', WHITE='#FFFFFF';
 
-    // ── 공통 스타일 ──
-    const baseStyle=`
-      font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
-      font-size:9pt; color:#1A2744; margin:0; padding:0;
-    `;
+    // ── 1번: 공정율 합계 = 직종별 공정율 합계 ÷ 직종수 ──
+    const pctVals=workers.map(w=>w.pct).filter(p=>p!==null&&p!==undefined&&p!=='');
+    const avgPct=pctVals.length ? Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length) : null;
+    const pctDisp=avgPct!==null?avgPct+'%':'-';
+    const pctColor=avgPct>=100?'#16A34A':avgPct>=50?NAVY2:'#DC2626';
 
-    // ── 테이블 셀 헬퍼 ──
-    const hcell=(txt,w,bg=MGRAY,fc=NAVY,bold=true)=>
-      `<td style="width:${w};background:${bg};color:${fc};font-weight:${bold?'bold':'normal'};
-        padding:4pt 6pt;border:1pt solid #C8CDD8;vertical-align:middle;text-align:center;
-        font-family:'맑은 고딕',sans-serif;font-size:8.5pt">${txt}</td>`;
-    const vcell=(txt,w,bg=WHITE,fc=NAVY,align='left',bold=false)=>
-      `<td style="width:${w};background:${bg};color:${fc};font-weight:${bold?'bold':'normal'};
-        padding:4pt 6pt;border:1pt solid #C8CDD8;vertical-align:middle;text-align:${align};
-        font-family:'맑은 고딕',sans-serif;font-size:9pt">${txt}</td>`;
+    // ── 헬퍼 함수 ──
+    const F=`font-family:'맑은 고딕','Malgun Gothic',sans-serif`;
+    const th=(txt,w,bg=NAVY2)=>
+      `<td style="width:${w};background:${bg};color:${WHITE};font-weight:700;text-align:center;
+        padding:3pt 4pt;border:0.75pt solid #8899BB;${F};font-size:8pt;white-space:nowrap">${txt}</td>`;
+    const td=(txt,w='',bg=WHITE,fc=NAVY,al='left',bold=false,fs='8.5pt')=>
+      `<td style="${w?'width:'+w+';':''}background:${bg};color:${fc};${bold?'font-weight:700;':''}
+        text-align:${al};padding:3pt 5pt;border:0.75pt solid #C8CDD8;${F};font-size:${fs};
+        vertical-align:middle">${txt}</td>`;
+    const lh=(txt,bg=NAVY2)=>
+      `<td style="background:${bg};color:${WHITE};font-weight:700;padding:3pt 6pt;
+        border:0.75pt solid #8899BB;${F};font-size:8pt;white-space:nowrap;text-align:center">${txt}</td>`;
 
-    // ── 섹션 헤더 ──
-    const secHdr=(txt)=>
-      `<tr><td colspan="8" style="background:${NAVY};color:${WHITE};font-weight:bold;
-        padding:5pt 8pt;font-size:9pt;font-family:'맑은 고딕',sans-serif;
-        border:1.5pt solid ${NAVY}">${txt}</td></tr>`;
-
-    // ── 인원 테이블 ──
-    let workerRows='';
+    // ── 작업인원 행 ──
+    let wRows='';
     workers.forEach((w,i)=>{
       const bg=i%2===0?WHITE:LGRAY;
-      const pct=w.pct!==null&&w.pct!==undefined?w.pct+'%':'-';
-      const pctColor=w.pct>=100?'#16A34A':w.pct>=50?NAVY2:'#DC2626';
-      workerRows+=`<tr>
-        ${vcell(w.job,'18%',bg)}
-        ${vcell(w.mgr||0,'7%',bg,NAVY,'center')}
-        ${vcell(w.emp||0,'7%',bg,NAVY,'center')}
-        ${vcell((w.hwa&&w.hwa[0])||0,'7%',bg,NAVY,'center')}
-        ${vcell((w.hwa&&w.hwa[1])||0,'7%',bg,NAVY,'center')}
-        ${vcell((w.hwa&&w.hwa[2])||0,'7%',bg,NAVY,'center')}
-        ${vcell(w.cumul||0,'8%',bg,'#374151','center')}
-        ${vcell(w.sub||0,'8%',bg,ORANGE,'center',true)}
-        ${vcell(pct,'8%',bg,pctColor,'center',true)}
+      const wp=w.pct!==null&&w.pct!==undefined?w.pct+'%':'-';
+      const wpc=w.pct>=100?'#16A34A':w.pct>=50?NAVY2:'#DC2626';
+      wRows+=`<tr>
+        ${td(w.job,'',bg,NAVY,'left',true,'8.5pt')}
+        ${td(w.mgr||0,'',bg,NAVY,'center')}
+        ${td(w.emp||0,'',bg,NAVY,'center')}
+        ${td((w.hwa&&w.hwa[0])||0,'',bg,'#444','center')}
+        ${td((w.hwa&&w.hwa[1])||0,'',bg,'#444','center')}
+        ${td((w.hwa&&w.hwa[2])||0,'',bg,'#444','center')}
+        ${td(w.cumul||0,'',bg,'#374151','center')}
+        ${td(w.sub||0,'',bg,ORANGE,'center',true)}
+        ${td(wp,'',bg,wpc,'center',true)}
       </tr>`;
     });
-    // 합계행
-    const pctVals=workers.map(w=>w.pct).filter(p=>p!==null&&p!==undefined);
-    const avgPct=pctVals.length?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length):null;
-    workerRows+=`<tr style="background:${MGRAY}">
-      <td style="font-weight:bold;padding:4pt 6pt;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif;font-size:9pt">합 계</td>
-      <td colspan="5" style="border:1pt solid #C8CDD8"></td>
-      <td style="text-align:center;border:1pt solid #C8CDD8;font-size:9pt">${report.totalCumul||0}</td>
-      <td style="text-align:center;font-weight:bold;color:${ORANGE};border:1pt solid #C8CDD8;font-size:9pt">${report.totalSub||0}</td>
-      <td style="text-align:center;font-weight:bold;color:${NAVY};border:1pt solid #C8CDD8;font-size:9pt">${avgPct!==null?avgPct+'%':'-'}</td>
+    wRows+=`<tr style="background:${MGRAY}">
+      <td style="font-weight:700;padding:3pt 5pt;border:0.75pt solid #C8CDD8;${F};font-size:8.5pt">합&nbsp;계</td>
+      <td colspan="5" style="border:0.75pt solid #C8CDD8"></td>
+      <td style="text-align:center;border:0.75pt solid #C8CDD8;font-size:8.5pt;${F}">${report.totalCumul||0}</td>
+      <td style="text-align:center;font-weight:700;color:${ORANGE};border:0.75pt solid #C8CDD8;font-size:8.5pt;${F}">${report.totalSub||0}</td>
+      <td style="text-align:center;font-weight:700;color:${pctColor};border:0.75pt solid #C8CDD8;font-size:9pt;${F}">${pctDisp}</td>
     </tr>`;
 
-    // ── 장비 테이블 ──
-    let equipRows=equips.length?equips.map((e,i)=>`<tr>
-      ${vcell(e.name,'40%',i%2===0?WHITE:LGRAY)}
-      ${vcell(e.qty+'대','15%',i%2===0?WHITE:LGRAY,NAVY,'center')}
-      ${vcell(e.desc||'','45%',i%2===0?WHITE:LGRAY)}
-    </tr>`).join(''):
-    `<tr><td colspan="3" style="text-align:center;padding:6pt;color:#888;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif">(장비 없음)</td></tr>`;
+    // ── 장비 행 ──
+    const eRows=equips.length?equips.map((e,i)=>{
+      const bg=i%2===0?WHITE:LGRAY;
+      return`<tr>${td(e.name,'55%',bg,NAVY,'left')}${td(e.qty+'대','15%',bg,ORANGE,'center',true)}${td(e.desc||'','30%',bg)}</tr>`;
+    }).join(''):
+    `<tr><td colspan="3" style="text-align:center;padding:4pt;color:#999;border:0.75pt solid #C8CDD8;${F};font-size:8pt">(없음)</td></tr>`;
 
-    // ── 자재 테이블 ──
-    let matRows=mats.length?mats.map((m,i)=>`<tr>
-      ${vcell(m.name,'30%',i%2===0?WHITE:LGRAY)}
-      ${vcell(m.spec||'-','20%',i%2===0?WHITE:LGRAY,NAVY,'center')}
-      ${vcell(m.qty,'15%',i%2===0?WHITE:LGRAY,ORANGE,'center',true)}
-      ${vcell(m.unit||'-','10%',i%2===0?WHITE:LGRAY,NAVY,'center')}
-    </tr>`).join(''):
-    `<tr><td colspan="4" style="text-align:center;padding:6pt;color:#888;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif">(자재 없음)</td></tr>`;
+    // ── 자재 행 ──
+    const mRows=mats.length?mats.map((m,i)=>{
+      const bg=i%2===0?WHITE:LGRAY;
+      return`<tr>${td(m.name,'35%',bg,NAVY,'left')}${td(m.spec||'-','20%',bg,'#666','center')}${td(m.qty,'15%',bg,ORANGE,'center',true)}${td(m.unit||'-','10%',bg,'#666','center')}</tr>`;
+    }).join(''):
+    `<tr><td colspan="4" style="text-align:center;padding:4pt;color:#999;border:0.75pt solid #C8CDD8;${F};font-size:8pt">(없음)</td></tr>`;
 
     // ── 작업내용 ──
-    const workTxt=(report.works||[]).map((w,i)=>`${i+1}. ${w}`).join('<br>');
+    const wTxt=(report.works||[]).map((w,i)=>`${i+1}. ${w}`).join('<br>');
 
-    // ── 사진 HTML ──
-    let photoHtml='';
+    // ══════════════════════════════════════
+    // 사진 페이지 (A4 1페이지 = 사진 4장, 2×2 배치)
+    // ══════════════════════════════════════
+    let photoPages='';
     if(photoList.length){
-      let rows='';
-      for(let i=0;i<photoList.length;i+=2){
-        const p1=photoList[i], p2=photoList[i+1];
-        rows+=`<tr>
-          <td style="width:50%;padding:6pt;border:1pt solid #C8CDD8;text-align:center;vertical-align:top">
-            ${p1&&p1.dataUrl?`<img src="${p1.dataUrl}" style="max-width:100%;max-height:180pt;object-fit:contain">`:''}<br>
-            <span style="font-size:8.5pt;color:${NAVY};font-weight:bold">${i+1}번.&nbsp;&nbsp;${p1&&p1.caption||''}</span>
-          </td>
-          <td style="width:50%;padding:6pt;border:1pt solid #C8CDD8;text-align:center;vertical-align:top">
-            ${p2&&p2.dataUrl?`<img src="${p2.dataUrl}" style="max-width:100%;max-height:180pt;object-fit:contain">`:''}<br>
-            ${p2?`<span style="font-size:8.5pt;color:${NAVY};font-weight:bold">${i+2}번.&nbsp;&nbsp;${p2.caption||''}</span>`:''}
-          </td>
-        </tr>`;
-      }
-      photoHtml=`
-        <div style="margin-top:16pt">
-          <div style="background:${NAVY};color:${WHITE};font-weight:bold;padding:6pt 10pt;
-            font-size:11pt;font-family:'맑은 고딕',sans-serif;letter-spacing:2pt;text-align:center;
-            border-bottom:3pt solid ${ORANGE}">공 &nbsp; 사 &nbsp; 사 &nbsp; 진 &nbsp; 대 &nbsp; 지</div>
-          <table style="width:100%;border-collapse:collapse;margin-top:8pt">${rows}</table>
+      for(let pg=0;pg<photoList.length;pg+=4){
+        const set=photoList.slice(pg,pg+4); // 최대 4장
+        // 2×2 그리드
+        let grid='';
+        for(let row=0;row<2;row++){
+          const p1=set[row*2], p2=set[row*2+1];
+          const pIdx1=pg+row*2, pIdx2=pg+row*2+1;
+          grid+=`<tr>
+            <td style="width:50%;padding:6pt;border:1.5pt solid ${MGRAY};text-align:center;vertical-align:middle;height:130pt">
+              ${p1&&p1.dataUrl
+                ?`<img src="${p1.dataUrl}" style="max-width:260pt;max-height:120pt;width:auto;height:auto;display:block;margin:0 auto">`
+                :'<div style="height:120pt;background:#F0F0F0;display:flex;align-items:center;justify-content:center;color:#CCC">-</div>'}
+            </td>
+            <td style="width:50%;padding:6pt;border:1.5pt solid ${MGRAY};text-align:center;vertical-align:middle;height:130pt">
+              ${p2&&p2.dataUrl
+                ?`<img src="${p2.dataUrl}" style="max-width:260pt;max-height:120pt;width:auto;height:auto;display:block;margin:0 auto">`
+                :''}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:4pt 6pt;border:1pt solid ${MGRAY};border-top:none;background:${LGRAY};text-align:center">
+              <span style="${F};font-size:8.5pt;font-weight:700;color:${NAVY}">${p1?pIdx1+1+'번.&nbsp;&nbsp;'+(p1.caption||''):''}</span>
+            </td>
+            <td style="padding:4pt 6pt;border:1pt solid ${MGRAY};border-top:none;background:${LGRAY};text-align:center">
+              <span style="${F};font-size:8.5pt;font-weight:700;color:${NAVY}">${p2?pIdx2+1+'번.&nbsp;&nbsp;'+(p2.caption||''):''}</span>
+            </td>
+          </tr>`;
+        }
+        photoPages+=`
+        <div style="page-break-before:always;padding:10mm 0">
+          <!-- 사진 페이지 헤더 -->
+          <table style="width:100%;border-collapse:collapse;margin-bottom:8pt">
+            <tr>
+              <td style="background:${NAVY};color:${WHITE};font-size:13pt;font-weight:700;
+                padding:8pt 14pt;letter-spacing:3pt;${F}">공&nbsp;&nbsp;사&nbsp;&nbsp;사&nbsp;&nbsp;진&nbsp;&nbsp;대&nbsp;&nbsp;지</td>
+              <td style="background:${NAVY2};color:${WHITE};font-size:8.5pt;padding:8pt 12pt;
+                text-align:right;${F}">${proj.name||''}&nbsp;&nbsp;|&nbsp;&nbsp;${report.date||''}&nbsp;&nbsp;|&nbsp;&nbsp;${report.author||''}</td>
+            </tr>
+          </table>
+          <div style="height:2pt;background:${ORANGE};margin-bottom:10pt"></div>
+          <!-- 2×2 사진 그리드 -->
+          <table style="width:100%;border-collapse:collapse;table-layout:fixed">${grid}</table>
+          <div style="text-align:right;font-size:7.5pt;color:#AAA;margin-top:6pt;${F}">
+            ${pg/4+1} / ${Math.ceil(photoList.length/4)} 페이지 &nbsp;|&nbsp; 총 ${photoList.length}장
+          </div>
         </div>`;
+      }
     }
 
-    // ── 전체 HTML 조립 ──
-    const html=`
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
+    // ══════════════════════════════════════
+    // 일보 페이지 HTML 조립
+    // ══════════════════════════════════════
+    const html=`<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
 <style>
-  @page { size:A4; margin:15mm 12mm; }
-  body { ${baseStyle} }
+  @page { size:210mm 297mm; margin:12mm 10mm 12mm 10mm; }
+  body { font-family:'맑은 고딕','Malgun Gothic',sans-serif; font-size:9pt; color:#1A2744; margin:0; }
   table { border-collapse:collapse; width:100%; }
-  .page-break { page-break-before:always; }
+  * { box-sizing:border-box; }
 </style>
-</head>
-<body>
+</head><body>
 
-<!-- ▌타이틀 -->
-<table style="width:100%;margin-bottom:8pt">
+<!-- ════ 타이틀 바 ════ -->
+<table style="margin-bottom:6pt">
   <tr>
-    <td style="width:60%;background:${NAVY};padding:10pt 14pt;vertical-align:middle">
-      <div style="color:${WHITE};font-size:20pt;font-weight:bold;font-family:'맑은 고딕',sans-serif;
-        letter-spacing:4pt">공 &nbsp; 사 &nbsp; 일 &nbsp; 보</div>
+    <td style="width:55%;background:${NAVY};padding:10pt 14pt;vertical-align:middle">
+      <div style="color:${WHITE};font-size:18pt;font-weight:700;letter-spacing:6pt">공사일보</div>
+      <div style="color:#7A9FCC;font-size:8pt;margin-top:2pt">${proj.work||''}</div>
     </td>
-    <td style="width:40%;background:${NAVY2};padding:0;vertical-align:top">
-      <table style="width:100%;border-collapse:collapse">
+    <td style="width:45%;background:${NAVY2};padding:0;vertical-align:top">
+      <table style="width:100%">
         <tr>
-          <td style="background:${NAVY2};color:#AAB8D0;font-size:8pt;padding:4pt 8pt;width:40%;border-bottom:1pt solid #3A5A9A;font-family:'맑은 고딕',sans-serif">작 &nbsp; 성 &nbsp; 일</td>
-          <td style="background:${NAVY};color:${WHITE};font-size:9pt;font-weight:bold;padding:4pt 8pt;border-bottom:1pt solid #3A5A9A;font-family:'맑은 고딕',sans-serif">${report.date||'-'}</td>
+          <td style="background:rgba(0,0,0,.2);color:#AAC4E0;font-size:7.5pt;padding:3.5pt 8pt;width:38%">작 성 일</td>
+          <td style="color:${WHITE};font-size:9pt;font-weight:700;padding:3.5pt 8pt;border-bottom:0.5pt solid #3A5A9A">${report.date||'-'}</td>
         </tr>
         <tr>
-          <td style="background:${NAVY2};color:#AAB8D0;font-size:8pt;padding:4pt 8pt;width:40%;border-bottom:1pt solid #3A5A9A;font-family:'맑은 고딕',sans-serif">작 &nbsp; 성 &nbsp; 자</td>
-          <td style="background:${NAVY};color:${ORANGE};font-size:9pt;font-weight:bold;padding:4pt 8pt;border-bottom:1pt solid #3A5A9A;font-family:'맑은 고딕',sans-serif">${report.author||'-'}${report.authorTitle?' ('+report.authorTitle+')':''}</td>
+          <td style="background:rgba(0,0,0,.2);color:#AAC4E0;font-size:7.5pt;padding:3.5pt 8pt">작 성 자</td>
+          <td style="color:${ORANGE};font-size:9pt;font-weight:700;padding:3.5pt 8pt;border-bottom:0.5pt solid #3A5A9A">${report.author||'-'}${report.authorTitle?' ('+report.authorTitle+')':''}</td>
         </tr>
         <tr>
-          <td style="background:${NAVY2};color:#AAB8D0;font-size:8pt;padding:4pt 8pt;width:40%;font-family:'맑은 고딕',sans-serif">일 보 번 호</td>
-          <td style="background:${NAVY};color:${WHITE};font-size:9pt;font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif">No. ${report.no||'001'}</td>
+          <td style="background:rgba(0,0,0,.2);color:#AAC4E0;font-size:7.5pt;padding:3.5pt 8pt">일보번호</td>
+          <td style="color:${WHITE};font-size:9pt;font-weight:700;padding:3.5pt 8pt">No.${report.no||'001'}</td>
         </tr>
       </table>
     </td>
   </tr>
 </table>
-<div style="height:3pt;background:${ORANGE};margin-bottom:8pt"></div>
+<div style="height:2.5pt;background:${ORANGE};margin-bottom:6pt"></div>
 
-<!-- ▌현장정보 -->
-<table style="margin-bottom:8pt">
+<!-- ════ 현장정보 ════ -->
+<table style="margin-bottom:5pt;font-size:8.5pt">
   <tr style="background:${NAVY}">
-    <td colspan="4" style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 현 장 정 보</td>
+    <td colspan="4" style="color:${WHITE};font-weight:700;padding:3pt 7pt;font-size:8.5pt">■ 현장 정보</td>
   </tr>
   <tr>
-    ${hcell('공 사 명','12%')} ${vcell(proj.work||'-','38%')}
-    ${hcell('공사현장','12%')} ${vcell(proj.name||'-','38%')}
+    ${lh('공 사 명')}${td(proj.work||'-','38%',WHITE,NAVY,'left')}
+    ${lh('공사현장')}${td(proj.name||'-','38%',WHITE,NAVY,'left')}
   </tr>
   <tr>
-    ${hcell('발 주 처','12%')} ${vcell(proj.client||'-','38%')}
-    ${hcell('시 공 사','12%')} ${vcell(proj.contractor||'-','38%')}
+    ${lh('발 주 처')}${td(proj.client||'-','38%',WHITE)}
+    ${lh('시 공 사')}${td(proj.contractor||'-','38%',WHITE)}
   </tr>
   <tr>
-    ${hcell('감 독 관','12%')} ${vcell(proj.supervisor||'-','38%')}
-    ${hcell('현장소장','12%')} ${vcell(proj.manager||'-','38%')}
-  </tr>
-  <tr>
-    ${hcell('공사기간','12%')} ${vcell((proj.startDate&&proj.endDate)?proj.startDate+' ~ '+proj.endDate:'-','38%')}
-    ${hcell('날씨/기온','12%')} ${vcell((report.weather||'-')+(report.tempMin?' | '+report.tempMin+'~'+report.tempMax+'°C':''),'38%')}
+    ${lh('공사기간')}${td((proj.startDate&&proj.endDate)?proj.startDate+' ~ '+proj.endDate:'-','38%',WHITE)}
+    ${lh('날씨/기온')}${td((report.weather||'-')+(report.tempMin?' | '+report.tempMin+'~'+report.tempMax+'°C':''),'38%',WHITE)}
   </tr>
 </table>
 
-<!-- ▌작업인원 -->
-<table style="margin-bottom:8pt">
+<!-- ════ 작업인원 ════ -->
+<table style="margin-bottom:5pt;font-size:8.5pt">
   <tr style="background:${NAVY}">
-    <td colspan="9" style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 작 업 인 원</td>
+    <td colspan="9" style="color:${WHITE};font-weight:700;padding:3pt 7pt;font-size:8.5pt">■ 작업 인원</td>
   </tr>
   <tr>
-    ${hcell('직  종','18%',NAVY2,WHITE)}
-    ${hcell('관리자','7%',NAVY2,WHITE)}
-    ${hcell('근로자','7%',NAVY2,WHITE)}
-    ${hcell('화기','7%',NAVY2,WHITE)}
-    ${hcell('신호','7%',NAVY2,WHITE)}
-    ${hcell('유도','7%',NAVY2,WHITE)}
-    ${hcell('누적','8%',NAVY2,WHITE)}
-    ${hcell('소계','8%',NAVY2,WHITE)}
-    ${hcell('공정율','8%',NAVY2,WHITE)}
+    ${th('직  종','20%')}${th('관리자','8%')}${th('근로자','8%')}
+    ${th('화기','7%')}${th('신호','7%')}${th('유도','7%')}
+    ${th('누 적','9%')}${th('소 계','9%')}${th('공정율','9%')}
   </tr>
-  ${workerRows}
+  ${wRows}
 </table>
 
-<!-- ▌작업내용 / 특이사항 (2단) -->
-<table style="margin-bottom:8pt">
+<!-- ════ 작업내용 + 특이사항 (2단) ════ -->
+<table style="margin-bottom:5pt">
   <tr>
-    <td style="width:58%;vertical-align:top;padding-right:6pt">
-      <table>
-        <tr style="background:${NAVY}"><td style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 작 업 내 용 / 공 종</td></tr>
-        <tr><td style="padding:6pt;border:1pt solid #C8CDD8;min-height:50pt;line-height:1.7;font-size:9pt;font-family:'맑은 고딕',sans-serif">${workTxt||'(없음)'}</td></tr>
+    <td style="width:58%;vertical-align:top;padding-right:4pt">
+      <table style="font-size:8.5pt">
+        <tr style="background:${NAVY}"><td style="color:${WHITE};font-weight:700;padding:3pt 7pt">■ 작업 내용 / 공종</td></tr>
+        <tr><td style="padding:5pt 7pt;border:0.75pt solid #C8CDD8;line-height:1.65;min-height:38pt">${wTxt||'(없음)'}</td></tr>
       </table>
     </td>
-    <td style="width:42%;vertical-align:top;padding-left:6pt">
-      <table>
-        <tr style="background:${NAVY2}"><td style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 특이사항 / 조치내용</td></tr>
-        <tr><td style="padding:6pt;border:1pt solid #C8CDD8;min-height:50pt;line-height:1.7;font-size:9pt;background:#FFFFF8;font-family:'맑은 고딕',sans-serif">${report.specialNote||''}</td></tr>
+    <td style="width:42%;vertical-align:top;padding-left:4pt">
+      <table style="font-size:8.5pt">
+        <tr style="background:${NAVY2}"><td style="color:${WHITE};font-weight:700;padding:3pt 7pt">■ 특이사항 / 조치내용</td></tr>
+        <tr><td style="padding:5pt 7pt;border:0.75pt solid #C8CDD8;line-height:1.65;min-height:38pt;background:#FFFFF8">${report.specialNote||'&nbsp;'}</td></tr>
       </table>
     </td>
   </tr>
 </table>
 
-<!-- ▌자재 / 장비 (2단) -->
-<table style="margin-bottom:8pt">
+<!-- ════ 자재 + 장비 (2단) ════ -->
+<table style="margin-bottom:5pt">
   <tr>
-    <td style="width:52%;vertical-align:top;padding-right:6pt">
-      <table>
-        <tr style="background:${NAVY}"><td colspan="4" style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 자 재 입 고</td></tr>
-        <tr>${hcell('자재명','30%',NAVY2,WHITE)}${hcell('규격','20%',NAVY2,WHITE)}${hcell('수량','15%',NAVY2,WHITE)}${hcell('단위','10%',NAVY2,WHITE)}</tr>
-        ${matRows}
+    <td style="width:50%;vertical-align:top;padding-right:4pt">
+      <table style="font-size:8.5pt">
+        <tr style="background:${NAVY}"><td colspan="4" style="color:${WHITE};font-weight:700;padding:3pt 7pt">■ 자재 입고</td></tr>
+        <tr>${th('자재명','38%')}${th('규격','22%')}${th('수량','18%')}${th('단위','12%')}</tr>
+        ${mRows}
       </table>
     </td>
-    <td style="width:48%;vertical-align:top;padding-left:6pt">
-      <table>
-        <tr style="background:${NAVY}"><td colspan="3" style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 장 비 투 입</td></tr>
-        <tr>${hcell('장비명','40%',NAVY2,WHITE)}${hcell('대수','15%',NAVY2,WHITE)}${hcell('작업내용','45%',NAVY2,WHITE)}</tr>
-        ${equipRows}
+    <td style="width:50%;vertical-align:top;padding-left:4pt">
+      <table style="font-size:8.5pt">
+        <tr style="background:${NAVY}"><td colspan="3" style="color:${WHITE};font-weight:700;padding:3pt 7pt">■ 장비 투입</td></tr>
+        <tr>${th('장비명','50%')}${th('대수','18%')}${th('작업내용','32%')}</tr>
+        ${eRows}
       </table>
     </td>
   </tr>
 </table>
 
-<!-- ▌공정율 요약 -->
-<table style="margin-bottom:8pt">
+<!-- ════ 공정율 요약 바 ════ -->
+<table style="margin-bottom:5pt;font-size:8.5pt">
   <tr style="background:${NAVY}">
-    <td colspan="4" style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 공 정 율 현 황</td>
+    <td colspan="4" style="color:${WHITE};font-weight:700;padding:3pt 7pt">■ 공정율 현황</td>
   </tr>
   <tr>
-    ${hcell('금일 투입인원','25%')}${hcell('누계 총 인원','25%')}${hcell('공정율','25%')}${hcell('날씨','25%')}
+    ${th('금일 투입인원','25%')}${th('누 계 인 원','25%')}${th('공  정  율','25%')}${th('날  씨','25%')}
   </tr>
   <tr>
-    <td style="text-align:center;font-size:14pt;font-weight:bold;color:${ORANGE};padding:6pt;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif">${report.totalSub||0}명</td>
-    <td style="text-align:center;font-size:14pt;font-weight:bold;color:${NAVY};padding:6pt;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif">${report.totalCumul||0}명</td>
-    <td style="text-align:center;font-size:14pt;font-weight:bold;color:${avgPct>=100?'#16A34A':NAVY2};padding:6pt;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif">${avgPct!==null?avgPct+'%':'-'}</td>
-    <td style="text-align:center;font-size:12pt;font-weight:bold;color:${NAVY};padding:6pt;border:1pt solid #C8CDD8;font-family:'맑은 고딕',sans-serif">${report.weather||'-'}</td>
+    <td style="text-align:center;font-size:13pt;font-weight:700;color:${ORANGE};padding:5pt;border:0.75pt solid #C8CDD8">${report.totalSub||0}명</td>
+    <td style="text-align:center;font-size:13pt;font-weight:700;color:${NAVY};padding:5pt;border:0.75pt solid #C8CDD8">${report.totalCumul||0}명</td>
+    <td style="text-align:center;font-size:14pt;font-weight:700;color:${pctColor};padding:5pt;border:0.75pt solid #C8CDD8">${pctDisp}</td>
+    <td style="text-align:center;font-size:11pt;font-weight:700;color:${NAVY};padding:5pt;border:0.75pt solid #C8CDD8">${report.weather||'-'}</td>
   </tr>
 </table>
 
-<!-- ▌서명란 -->
-<table style="margin-bottom:8pt">
+<!-- ════ 서명란 ════ -->
+<table style="font-size:8.5pt">
   <tr style="background:${NAVY}">
-    <td colspan="4" style="color:${WHITE};font-weight:bold;padding:4pt 8pt;font-family:'맑은 고딕',sans-serif;font-size:9pt">▪ &nbsp; 서 명 / 확 인</td>
+    <td colspan="4" style="color:${WHITE};font-weight:700;padding:3pt 7pt">■ 서명 / 확인</td>
   </tr>
   <tr>
-    ${hcell('작 성 자','25%')}${hcell('현 장 소 장','25%')}${hcell('감 독 관','25%')}${hcell('발 주 처','25%')}
+    ${th('작 성 자','25%')}${th('현 장 소 장','25%')}${th('감  독  관','25%')}${th('발  주  처','25%')}
   </tr>
   <tr>
-    <td style="height:40pt;border:1pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:4pt;font-size:9pt;font-family:'맑은 고딕',sans-serif;color:#888">(인)</td>
-    <td style="height:40pt;border:1pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:4pt;font-size:9pt;font-family:'맑은 고딕',sans-serif;color:#888">(인)</td>
-    <td style="height:40pt;border:1pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:4pt;font-size:9pt;font-family:'맑은 고딕',sans-serif;color:#888">(인)</td>
-    <td style="height:40pt;border:1pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:4pt;font-size:9pt;font-family:'맑은 고딕',sans-serif;color:#888">(인)</td>
+    <td style="height:36pt;border:0.75pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:3pt;color:#AAA;font-size:8.5pt">(인)</td>
+    <td style="height:36pt;border:0.75pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:3pt;color:#AAA;font-size:8.5pt">(인)</td>
+    <td style="height:36pt;border:0.75pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:3pt;color:#AAA;font-size:8.5pt">(인)</td>
+    <td style="height:36pt;border:0.75pt solid #C8CDD8;text-align:center;vertical-align:bottom;padding:3pt;color:#AAA;font-size:8.5pt">(인)</td>
   </tr>
 </table>
+<div style="height:2pt;background:${NAVY};margin-top:5pt"></div>
 
-<div style="height:3pt;background:${NAVY}"></div>
-
-${photoHtml}
+<!-- ════ 사진 페이지들 ════ -->
+${photoPages}
 
 </body></html>`;
 
-    // ── avgPct 재계산 (HTML 조립 후에도 사용) ──
-    const avgPctFinal=pctVals.length?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length):null;
-
-    // ── Word Blob으로 다운로드 ──
-    const blob=new Blob(['\ufeff'+html], {
-      type:'application/msword;charset=utf-8'
-    });
+    // ── Blob → .doc 다운로드 ──
+    const blob=new Blob(['\ufeff'+html],{type:'application/msword;charset=utf-8'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
     a.download=`공사일보_${report.date||'미정'}_${report.author||'작성자'}_No${report.no||'0'}.doc`;
     a.click();
     URL.revokeObjectURL(url);
-    toast('📄 Word 파일 저장 완료!');
+    toast('📄 Word 저장 완료!');
 
   }catch(err){
-    console.error('Word 생성 오류:', err);
+    console.error('Word 오류:',err);
     toast('오류: '+err.message);
   }
 }
+
 
 
 // ── EMAIL ──
