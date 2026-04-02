@@ -1511,106 +1511,107 @@ async function generateExcel(report, photoArr){
 
     // ════════════════════════════════
     // 시트2: 공사사진대지
-    // 이미지 처럼: 헤더 + 1행에 사진2장 반복
     // ════════════════════════════════
     const ws2=wb.addWorksheet('공사사진대지');
 
-    // 열: A~J (10열), 사진2장을 A~E, F~J 로 배치
-    // A~E = 5열, F~J = 5열, 각 열 너비 약 12
-    for(let i=1;i<=10;i++) ws2.getColumn(i).width=12;
+    // 사진 시트 열 설정: 6열 (A~F) - 좌 3열 / 우 3열
+    for(let i=1;i<=6;i++) ws2.getColumn(i).width=22;
 
     let r2=1;
 
     // 타이틀
     ws2.getRow(r2).height=30;
-    ws2.mergeCells(r2,1,r2,10);
+    ws2.mergeCells(r2,1,r2,6);
     setCell(ws2,r2,1,'공 사 사 진 대 지',{sz:18,bold:true,fc:WHITE,bg:NAVY,h:'center',v:'middle',bdr:BM}); r2++;
 
     // 오렌지 라인
     ws2.getRow(r2).height=4;
-    ws2.mergeCells(r2,1,r2,10);
+    ws2.mergeCells(r2,1,r2,6);
     ws2.getCell(r2,1).fill=FL(ORANGE); r2++;
 
     // 현장정보 행1
     ws2.getRow(r2).height=16;
-    ws2.mergeCells(r2,1,r2,2);
-    ws2.mergeCells(r2,3,r2,5);
-    ws2.mergeCells(r2,6,r2,7);
-    ws2.mergeCells(r2,8,r2,10);
+    ws2.mergeCells(r2,1,r2,1);
+    ws2.mergeCells(r2,2,r2,3);
+    ws2.mergeCells(r2,4,r2,4);
+    ws2.mergeCells(r2,5,r2,6);
     setCell(ws2,r2,1,'현 장 명',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    setCell(ws2,r2,3,proj.name||'',{sz:9,fc:NAVY,bg:WHITE,h:'left',bdr:BA});
-    setCell(ws2,r2,6,'작업일자',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    setCell(ws2,r2,8,report.date||'',{sz:9,fc:NAVY,bg:WHITE,h:'center',bdr:BA}); r2++;
+    setCell(ws2,r2,2,proj.name||'',{sz:9,fc:NAVY,bg:WHITE,h:'left',bdr:BA});
+    setCell(ws2,r2,4,'작업일자',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
+    setCell(ws2,r2,5,report.date||'',{sz:9,fc:NAVY,bg:WHITE,h:'center',bdr:BA}); r2++;
 
     // 현장정보 행2
     ws2.getRow(r2).height=16;
-    ws2.mergeCells(r2,1,r2,2);
-    ws2.mergeCells(r2,3,r2,5);
-    ws2.mergeCells(r2,6,r2,7);
-    ws2.mergeCells(r2,8,r2,10);
+    ws2.mergeCells(r2,1,r2,1);
+    ws2.mergeCells(r2,2,r2,3);
+    ws2.mergeCells(r2,4,r2,4);
+    ws2.mergeCells(r2,5,r2,6);
     setCell(ws2,r2,1,'작 성 자',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    setCell(ws2,r2,3,report.author||'',{sz:9,fc:NAVY,bg:WHITE,h:'left',bdr:BA});
-    setCell(ws2,r2,6,'날    씨',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
-    setCell(ws2,r2,8,report.weather||'',{sz:9,fc:NAVY,bg:WHITE,h:'center',bdr:BA}); r2++;
+    setCell(ws2,r2,2,report.author||'',{sz:9,fc:NAVY,bg:WHITE,h:'left',bdr:BA});
+    setCell(ws2,r2,4,'날    씨',{sz:8,bold:true,fc:DGRAY,bg:MGRAY,h:'center',bdr:BA});
+    setCell(ws2,r2,5,report.weather||'',{sz:9,fc:NAVY,bg:WHITE,h:'center',bdr:BA}); r2++;
 
     // 여백
     ws2.getRow(r2).height=6; r2++;
 
-    // 사진: 1행에 2장 (좌 A~E, 우 F~J)
-    const IMG_W=220, IMG_H=165;  // 픽셀 (약 A4 2열 기준)
-    const PIC_ROW_H=130;          // pt
-    const CAP_ROW_H=16;           // pt (번호 행)
+    // 사진: 1행에 2장 (좌 A~C / 우 D~F, 각 3열)
+    // 열 너비 22 * 3열 = 66 → 1열 너비 약 165px 환산 → 사진 가로 = 66 * 7.5 ≈ 495px
+    // 실제 엑셀 pt 기준: 22 * 8 = 176pt per 3열
+    const IMG_W = 310;  // px - 3열(A~C) 너비에 맞춤
+    const IMG_H = 232;  // px - 4:3 비율
+    const PIC_ROW_H = 175; // pt
+    const CAP_ROW_H = 18;  // pt
 
     if(!photoList.length){
       ws2.getRow(r2).height=40;
-      ws2.mergeCells(r2,1,r2,10);
+      ws2.mergeCells(r2,1,r2,6);
       setCell(ws2,r2,1,'(업로드된 사진이 없습니다)',{sz:11,fc:DGRAY,bg:LGRAY,h:'center',v:'middle',bdr:BM});
     } else {
       for(let i=0;i<photoList.length;i+=2){
         // 사진 행
         ws2.getRow(r2).height=PIC_ROW_H;
 
-        // 왼쪽 사진
+        // 왼쪽 사진 (col A=0)
         const p1=photoList[i];
         if(p1&&p1.dataUrl){
           const b64=p1.dataUrl.split(',')[1];
           const ext=p1.dataUrl.includes('png')?'png':'jpeg';
-          const imgId=wb.addImage({base64:b64,extension:ext});
-          ws2.addImage(imgId,{
-            tl:{col:0.1, row:r2-1+0.1},
+          ws2.addImage(wb.addImage({base64:b64,extension:ext}),{
+            tl:{col:0.08, row:r2-1+0.08},
             ext:{width:IMG_W, height:IMG_H}
           });
         }
 
-        // 오른쪽 사진
+        // 오른쪽 사진 (col D=3)
         const p2=photoList[i+1];
         if(p2&&p2.dataUrl){
           const b64=p2.dataUrl.split(',')[1];
           const ext=p2.dataUrl.includes('png')?'png':'jpeg';
-          const imgId=wb.addImage({base64:b64,extension:ext});
-          ws2.addImage(imgId,{
-            tl:{col:5+0.1, row:r2-1+0.1},
+          ws2.addImage(wb.addImage({base64:b64,extension:ext}),{
+            tl:{col:3+0.08, row:r2-1+0.08},
             ext:{width:IMG_W, height:IMG_H}
           });
         }
 
         r2++;
 
-        // 번호 + 캡션 행
+        // 캡션 행
         ws2.getRow(r2).height=CAP_ROW_H;
-        ws2.mergeCells(r2,1,r2,5);
-        ws2.mergeCells(r2,6,r2,10);
-        setCell(ws2,r2,1,(i+1)+'번.  '+(p1&&p1.caption||''),{sz:9,bold:true,fc:NAVY,bg:LGRAY,h:'center',bdr:BA});
-        setCell(ws2,r2,6,p2?(i+2)+'번.  '+(p2.caption||''):'',{sz:9,bold:true,fc:NAVY,bg:LGRAY,h:'center',bdr:BA});
+        ws2.mergeCells(r2,1,r2,3);
+        ws2.mergeCells(r2,4,r2,6);
+        setCell(ws2,r2,1,(i+1)+'번.  '+(p1&&p1.caption||''),
+          {sz:10,bold:true,fc:NAVY,bg:LGRAY,h:'center',bdr:BA});
+        setCell(ws2,r2,4,p2?(i+2)+'번.  '+(p2.caption||''):'',
+          {sz:10,bold:true,fc:NAVY,bg:LGRAY,h:'center',bdr:BA});
         r2++;
 
         // 행 사이 여백
-        ws2.getRow(r2).height=8; r2++;
+        if(i+2<photoList.length){ ws2.getRow(r2).height=10; r2++; }
       }
     }
 
     // 하단바
-    ws2.mergeCells(r2,1,r2,10);
+    ws2.mergeCells(r2,1,r2,6);
     ws2.getCell(r2,1).fill=FL(NAVY); ws2.getRow(r2).height=4;
 
     // ── 저장 ──
