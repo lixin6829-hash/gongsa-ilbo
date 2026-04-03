@@ -1527,61 +1527,85 @@ async function generateWord(report, photoArr){
       ext: p.dataUrl&&p.dataUrl.includes('png') ? 'png' : 'jpeg',
       caption: p.caption||''
     })).filter(p=>p.b64);
-      const cv=document.createElement('canvas');
-      cv.width=w; cv.height=h;
-      cv.getContext('2d').drawImage(img,0,0,w,h);
-      URL.revokeObjectURL(url);
-      res(cv.toDataURL('image/jpeg',0.78));
-    };
-    img.onerror=()=>{
-      const fr=new FileReader();
-      fr.onload=ev=>res(ev.target.result);
-      fr.readAsDataURL(file);
-    };
-    img.src=url;
-  });
+
+    // Python 코드 생성
+    const pythonCode=`import base64,io,json
+from docx import Document
+from docx.shared import Pt,Cm,RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_ALIGN_VERTICAL
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
+def rgb(h):
+    h=h.lstrip('#')
+    return RGBColor(int(h[0:2],16),int(h[2:4],16),int(h[4:6],16))
+NAVY='1A2744';ORANGE='F5851F';WHITE='FFFFFF';MGRAY='E2E5EE'
+def shd(cell,color):
+    s=OxmlElement('w:shd');s.set(qn('w:val'),'clear');s.set(qn('w:color'),'auto');s.set(qn('w:fill'),color);cell._tc.get_or_add_tcPr().append(s)
+def bdr(cell):
+    tcPr=cell._tc.get_or_add_tcPr();b=OxmlElement('w:tcBorders')
+    for edge in ['top','left','bottom','right']:
+        t=OxmlElement(f'w:{edge}');t.set(qn('w:val'),'single');t.set(qn('w:sz'),'4');t.set(qn('w:space'),'0');t.set(qn('w:color'),'C0C8D8');b.append(t)
+    tcPr.append(b)
+def ct(cell,text,size=9,bold=False,color=NAVY,align='left'):
+    p=cell.paragraphs[0];p.alignment={'left':WD_ALIGN_PARAGRAPH.LEFT,'center':WD_ALIGN_PARAGRAPH.CENTER,'right':WD_ALIGN_PARAGRAPH.RIGHT}[align]
+    run=p.add_run(str(text) if text is not None else '');run.font.name='맑은 고딕';run.font.size=Pt(size);run.font.bold=bold;run.font.color.rgb=rgb(color)
+d=${JSON.stringify({date:report.date||'',no:report.no||'001',author:report.author||'',authorTitle:report.authorTitle||'',weather:report.weather||'-',tempMin:report.tempMin||'',tempMax:report.tempMax||'',totalSub:report.totalSub||0,totalPct:avgPct,specialNote:report.specialNote||'',proj:{...(report.project||{})},workers:workers.map(w=>({job:w.job,sub:w.sub||0,cumul:w.cumul||0,pct:w.pct})),works:report.works||[],equips:equips.map(e=>({name:e.name,qty:e.qty||0,desc:e.desc||''})),mats:mats.map(m=>({name:m.name,spec:m.spec||'',qty:m.qty||0,unit:m.unit||''}))})}
+photos=${JSON.stringify(photoData.slice(0,20))}
+doc=Document();sec=doc.sections[0];sec.page_width=Cm(21);sec.page_height=Cm(29.7);sec.left_margin=Cm(1.5);sec.right_margin=Cm(1.5);sec.top_margin=Cm(1.5);sec.bottom_margin=Cm(1.5)
+p=doc.add_paragraph();run=p.add_run('공  사  일  보');run.font.name='맑은 고딕';run.font.size=Pt(20);run.font.bold=True;run.font.color.rgb=rgb(NAVY);p.alignment=WD_ALIGN_PARAGRAPH.CENTER
+p2=doc.add_paragraph();run2=p2.add_run(f"작성일: {d['date']}  No.{d['no']}  작성자: {d['author']}");run2.font.name='맑은 고딕';run2.font.size=Pt(10);p2.alignment=WD_ALIGN_PARAGRAPH.CENTER
+doc.add_paragraph()
+t=doc.add_table(rows=1,cols=2);t.style='Table Grid'
+t.rows[0].cells[0].text='날씨';t.rows[0].cells[1].text=str(d['weather'])+(' / '+str(d['tempMin'])+'~'+str(d['tempMax'])+'°C' if d['tempMin'] else '')
+for w in d['workers']:
+    row=t.add_row();row.cells[0].text=str(w['job']);row.cells[1].text=str(w['sub'])+'명  공정율 '+str(w['pct'])+'%' if w['pct'] is not None else str(w['sub'])+'명'
+doc.add_paragraph()
+wp=doc.add_paragraph();wp.add_run('작업내용').bold=True
+for i,wk in enumerate(d['works']):
+    doc.add_paragraph(f'{i+1}. {wk}')
+if d['specialNote']:
+    doc.add_paragraph();sp=doc.add_paragraph();sp.add_run('특이사항: ').bold=True;sp.add_run(d['specialNote'])
+if photos:
+    doc.add_paragraph();pp=doc.add_paragraph();pp.add_run('현장 사진').bold=True
+    for ph in photos:
+        try:
+            img_data=base64.b64decode(ph['b64']);img_stream=io.BytesIO(img_data);doc.add_picture(img_stream,width=Cm(8))
+            if ph.get('caption'):doc.add_paragraph(ph['caption'])
+        except:pass
+buf=io.BytesIO();doc.save(buf);buf.seek(0);import base64 as b64mod;print(b64mod.b64encode(buf.read()).decode())`;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:`다음 Python 코드를 실행하고 결과(base64 문자열)만 출력하세요. 다른 텍스트 없이 base64만:\n\n\`\`\`python\n${pythonCode}\n\`\`\``}]
+      })
+    });
+    if(!resp.ok) throw new Error('API 오류: '+resp.status);
+    const data=await resp.json();
+    const b64=data.content.map(c=>c.text||'').join('').trim();
+    if(!b64||b64.length<100) throw new Error('Word 생성 실패');
+    const byteStr=atob(b64);
+    const bytes=new Uint8Array(byteStr.length);
+    for(let i=0;i<byteStr.length;i++) bytes[i]=byteStr.charCodeAt(i);
+    const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`공사일보_${report.date||'미정'}_No${report.no||'0'}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('📄 Word 저장 완료!');
+  }catch(err){
+    console.error('Word 오류:',err);
+    toast('오류: '+err.message);
+  }
 }
 
-// ── PHOTOS ──
-async function addPhotos(e){
-  const files=Array.from(e.target.files);
-  for(const f of files){
-    const dataUrl=await compressPhoto(f);
-    photos.push({dataUrl, caption:''});
-  }
-  renderPhotoGrid();
-  e.target.value='';
-}
-function renderPhotoGrid(){
-  const grid=$id('photoGrid'),empty=$id('photoEmpty'),badge=$id('photoBadge'),delAll=$id('photoDelAll');
-  grid.innerHTML='';
-  if(!photos.length){
-    empty.style.display='block'; badge.style.display='none';
-    if(delAll) delAll.style.display='none'; return;
-  }
-  empty.style.display='none'; badge.style.display='block';
-  if(delAll) delAll.style.display='block';
-  $id('photoCnt').textContent=photos.length;
-  photos.forEach((p,i)=>{
-    const d=document.createElement('div');
-    d.className='pitem';
-    d.innerHTML=`
-      <div class="pitem-img-wrap">
-        <img src="${p.dataUrl}" loading="lazy">
-        <div class="pitem-num">${i+1}번</div>
-        <button class="pdel" onclick="photos.splice(${i},1);renderPhotoGrid()">✕</button>
-      </div>
-      <div class="pcap-wrap">
-        <span class="pcap-label">📝 ${i+1}번 사진 설명 (엑셀에 표시됩니다)</span>
-        <textarea class="pcap" placeholder="사진 설명을 입력하세요&#10;예) 1층 배관 보온 작업 완료" oninput="photos[${i}].caption=this.value;this.style.height='auto';this.style.height=this.scrollHeight+'px'">${p.caption||''}</textarea>
-      </div>`;
-    grid.appendChild(d);
-  });
-}
-function clearPhotos(){
-  if(!confirm('사진을 모두 삭제하시겠습니까?')) return;
-  photos=[]; renderPhotoGrid(); toast('🗑 사진이 모두 삭제되었습니다');
-}
+
 
 // ── COLLECT REPORT ──
 function collectReport(){
