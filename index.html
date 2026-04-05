@@ -875,7 +875,14 @@ function initDate(){
 // 현장 (Sites) — API
 // ══════════════════════════════════════════════════════════════════════
 async function loadSites(){
-  try{ sites = await api('GET','/sites'); }
+  try{
+    // 항상 최신 siteIds 먼저 갱신 (현장 추가 즉시 반영)
+    if(!isAdmin()){
+      const me = await api('GET','/me');
+      currentUser = {...currentUser, siteIds: me.siteIds||[]};
+    }
+    sites = await api('GET','/sites');
+  }
   catch(e){ sites=[]; setSyncBadge('err'); }
 }
 async function saveSitesRemote(){ /* 현장 수정은 개별 API 호출로 처리 */ }
