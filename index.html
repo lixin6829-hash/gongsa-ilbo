@@ -1522,7 +1522,6 @@ async function generateWord(report, photoArr){
     const pctVals=workers.map(w=>w.pct).filter(p=>p!==null&&p!==undefined&&p!=='');
     const avgPct=pctVals.length?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length):0;
 
-    // ── HTML → 인쇄 → 저장 방식 (별도 창) ──
     const wRows=workers.map(w=>`
       <tr>
         <td>${w.job||''}</td>
@@ -1535,33 +1534,45 @@ async function generateWord(report, photoArr){
       </tr>`).join('');
     const eRows=equips.map(e=>`<tr><td>${e.name}</td><td style="text-align:center">${e.qty}대</td><td>${e.desc||'-'}</td></tr>`).join('');
     const mRows=mats.map(m=>`<tr><td>${m.name}</td><td>${m.spec||'-'}</td><td style="text-align:center">${m.qty}</td><td>${m.unit||'-'}</td></tr>`).join('');
-    const wkRows=report.works?.map((w,i)=>`<tr><td style="text-align:center;color:#6b7694">${i+1}</td><td>${w}</td></tr>`).join('')||'';
-    const photoHtml=photoList.map(p=>`
-      <div style="break-inside:avoid;margin-bottom:14px">
-        <img src="${p.dataUrl}" style="width:100%;max-height:200px;object-fit:cover;border-radius:6px;border:1px solid #ddd">
-        ${p.caption?`<div style="font-size:11px;color:#555;margin-top:4px;text-align:center">${p.caption}</div>`:''}
-      </div>`).join('');
+    const wkRows=(report.works||[]).map((w,i)=>`<tr><td style="text-align:center;color:#6b7694;width:30px">${i+1}</td><td>${w}</td></tr>`).join('');
+
+    // 사진 2열 그리드 (2장씩 한 행)
+    let photoRows='';
+    for(let i=0;i<photoList.length;i+=2){
+      const p1=photoList[i], p2=photoList[i+1];
+      photoRows+=`<tr>
+        <td style="width:50%;padding:6px;text-align:center;vertical-align:top">
+          <img src="${p1.dataUrl}" style="width:100%;max-width:240px;height:170px;object-fit:cover;border-radius:4px;border:1px solid #ddd">
+          ${p1.caption?`<div style="font-size:8pt;color:#555;margin-top:3px">${p1.caption}</div>`:''}
+        </td>
+        <td style="width:50%;padding:6px;text-align:center;vertical-align:top">
+          ${p2?`<img src="${p2.dataUrl}" style="width:100%;max-width:240px;height:170px;object-fit:cover;border-radius:4px;border:1px solid #ddd">
+          ${p2.caption?`<div style="font-size:8pt;color:#555;margin-top:3px">${p2.caption}</div>`:''}`:'' }
+        </td>
+      </tr>`;
+    }
 
     const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
 <style>
-  @page{size:A4;margin:18mm 15mm}
+  @page{size:A4;margin:15mm 15mm}
   body{font-family:'맑은 고딕','Malgun Gothic','Noto Sans KR',sans-serif;font-size:9pt;color:#1a2744;margin:0}
   h1{font-size:22pt;text-align:center;letter-spacing:8px;color:#1a2744;margin:0 0 4px}
-  .sub-title{text-align:center;font-size:9pt;color:#6b7694;margin-bottom:16px}
-  table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:8.5pt}
-  th{background:#1a2744;color:#fff;padding:6px 8px;text-align:center;font-weight:600}
-  td{padding:5px 8px;border:1px solid #d0d5e0;vertical-align:middle}
+  .sub-title{text-align:center;font-size:9pt;color:#6b7694;margin-bottom:14px}
+  table{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:8.5pt}
+  th{background:#1a2744;color:#fff;padding:5px 7px;text-align:center;font-weight:600}
+  td{padding:4px 7px;border:1px solid #d0d5e0;vertical-align:middle}
   tr:nth-child(even) td{background:#f8f9fc}
-  .section{font-size:10pt;font-weight:700;color:#1a2744;border-left:4px solid #f5851f;padding-left:8px;margin:14px 0 6px}
-  .info-table td{width:18%;background:#f0f2f7;font-weight:600;font-size:8pt} 
-  .info-table td+td{width:32%;background:#fff;font-weight:400}
-  .badge{display:inline-block;background:#f5851f;color:#fff;border-radius:4px;padding:2px 8px;font-size:8pt;font-weight:700}
-  .photo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-  .note-box{background:#f8f9fc;border:1px solid #d0d5e0;border-radius:6px;padding:10px;font-size:8.5pt;min-height:40px}
+  .section{font-size:10pt;font-weight:700;color:#1a2744;border-left:4px solid #f5851f;padding-left:8px;margin:12px 0 5px}
+  .info-table td:nth-child(odd){background:#f0f2f7;font-weight:600;width:12%}
+  .info-table td:nth-child(even){background:#fff;width:26%}
+  .badge{background:#f5851f;color:#fff;border-radius:4px;padding:1px 7px;font-size:8pt;font-weight:700;margin-left:6px}
+  .note-box{border:1px solid #d0d5e0;border-radius:4px;padding:8px;font-size:8.5pt;min-height:36px;background:#f8f9fc}
+  .sign-row{display:flex;justify-content:flex-end;gap:60px;font-size:8.5pt;margin-top:20px;border-top:2px solid #1a2744;padding-top:8px}
+  .photo-table td{border:none!important;background:#fff!important}
   @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body>
 <h1>공 사 일 보</h1>
-<div class="sub-title">No.${report.no||'001'} &nbsp;|&nbsp; ${report.date||''} &nbsp;|&nbsp; 작성자: ${report.author||''} ${report.authorTitle?'('+report.authorTitle+')':''}</div>
+<div class="sub-title">No.${report.no||'001'} &nbsp;|&nbsp; ${report.date||''} &nbsp;|&nbsp; 작성자: ${report.author||''}${report.authorTitle?' ('+report.authorTitle+')':''}</div>
 
 <div class="section">■ 현장 정보</div>
 <table class="info-table">
@@ -1571,7 +1582,7 @@ async function generateWord(report, photoArr){
   <tr><td>공사기간</td><td>${proj.startDate||'-'} ~ ${proj.endDate||'-'}</td><td>날씨/기온</td><td>${report.weather||'-'} / ${report.tempMin||'-'}°C ~ ${report.tempMax||'-'}°C</td></tr>
 </table>
 
-<div class="section">■ 작업 인원 <span class="badge">전체 ${report.totalSub||0}명 · 공정율 ${avgPct}%</span></div>
+<div class="section">■ 작업 인원<span class="badge">전체 ${report.totalSub||0}명 · 공정율 ${avgPct}%</span></div>
 <table>
   <thead><tr><th>직종</th><th>관리자</th><th>근로자</th><th>화기·신호·유도</th><th>소계</th><th>누적</th><th>공정율</th></tr></thead>
   <tbody>${wRows||'<tr><td colspan="7" style="text-align:center;color:#999">없음</td></tr>'}</tbody>
@@ -1585,31 +1596,35 @@ ${mats.length?`<div class="section">■ 자재 입고</div>
 <table><thead><tr><th>자재명</th><th>규격</th><th>수량</th><th>단위</th></tr></thead>
 <tbody>${mRows}</tbody></table>`:''}
 
-${report.works?.length?`<div class="section">■ 작업 내용</div>
-<table><thead><tr><th style="width:40px">No.</th><th>공종 및 작업내용</th></tr></thead>
+${(report.works||[]).length?`<div class="section">■ 작업 내용</div>
+<table><thead><tr><th style="width:36px">No.</th><th>공종 및 작업내용</th></tr></thead>
 <tbody>${wkRows}</tbody></table>`:''}
 
 <div class="section">■ 특이사항</div>
 <div class="note-box">${report.specialNote||'해당없음'}</div>
 
 ${photoList.length?`<div class="section">■ 현장 사진 (${photoList.length}장)</div>
-<div class="photo-grid">${photoHtml}</div>`:''}
+<table class="photo-table"><tbody>${photoRows}</tbody></table>`:''}
 
-<div style="margin-top:30px;border-top:2px solid #1a2744;padding-top:10px;display:flex;justify-content:flex-end;gap:40px;font-size:8.5pt">
-  <span>작 성 자: ${report.author||''} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (인)</span>
-  <span>확 인 자: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (인)</span>
+<div class="sign-row">
+  <span>작 성 자: &nbsp;${report.author||''}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (인)</span>
+  <span>확 인 자: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (인)</span>
 </div>
 </body></html>`;
 
-    // 새 창에서 인쇄 다이얼로그 열기
-    const w=window.open('','_blank','width=794,height=1123');
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(()=>{
-      w.print();
-      toast('📄 인쇄/PDF 저장 창이 열렸습니다 → "PDF로 저장" 선택');
-    }, 800);
+    // Word 저장 (mhtml 방식 - 이미지 포함)
+    const blob = new Blob(['\ufeff'+html], {
+      type: 'application/msword;charset=utf-8'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `공사일보_${report.date||'미정'}_No${report.no||'0'}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('📄 Word 파일 저장 완료!');
 
   }catch(err){
     console.error('Word 오류:',err);
