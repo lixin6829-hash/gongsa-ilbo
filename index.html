@@ -989,6 +989,11 @@ async function saveSite(){
     setSyncBadge('ing');
     if(editId){ await api('PUT','/sites/'+editId, data); }
     else { await api('POST','/sites', data); }
+    // 현장 추가 후 최신 siteIds 즉시 반영
+    try{
+      const me = await api('GET','/me');
+      currentUser = {...currentUser, siteIds: me.siteIds};
+    }catch(e2){}
     await loadSites();
     $id('ovSite').classList.remove('on');
     renderHome();
