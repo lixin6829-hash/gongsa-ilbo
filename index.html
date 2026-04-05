@@ -265,7 +265,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="hdr-logo">
         <div class="hdr-icon">🏗</div>
         <div>
-          <div class="hdr-title">공사일보 관리자</div>
+          <div class="hdr-title">공사일보</div>
           <div class="hdr-sub" id="admUserName">관리자</div>
         </div>
       </div>
@@ -273,11 +273,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <button class="home-btn" onclick="doLogout()" style="background:rgba(220,38,38,.3);border-color:rgba(220,38,38,.5)">로그아웃</button>
       </div>
     </div>
-    <nav class="tabs">
+    <nav class="tabs" id="admTabs">
       <div class="tab on" onclick="admTab('dashboard',this)"><span class="tab-ic">🏗</span>현장현황</div>
-      <div class="tab" onclick="admTab('users',this)"><span class="tab-ic">👤</span>계정관리</div>
+      <div class="tab" onclick="admTab('viewer',this)"><span class="tab-ic">📋</span>일보조회</div>
+      <div class="tab" id="tabUsers" onclick="admTab('users',this)"><span class="tab-ic">👤</span>계정관리</div>
     </nav>
   </div>
+
+  <!-- 현장 현황 -->
   <div class="page on" id="adm-dashboard" style="padding:14px;padding-bottom:40px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div style="font-size:13px;font-weight:700;color:var(--navy)">📊 전체 현장 현황</div>
@@ -285,10 +288,47 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
     <div id="admDashList"><div style="text-align:center;padding:40px 0;color:var(--gray)">로딩 중...</div></div>
   </div>
+
+  <!-- 일보 조회 (날짜 선택 + 미리보기) -->
+  <div class="page" id="adm-viewer" style="padding:14px;padding-bottom:40px">
+    <div class="card">
+      <div class="card-hdr"><span>🔍</span> 일보 조회</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="fg">
+            <label>현장 선택</label>
+            <select id="viewerSite" onchange="loadViewerDates()">
+              <option value="">-- 현장 선택 --</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="fg">
+            <label>날짜 선택</label>
+            <select id="viewerDate" onchange="loadViewerReport()">
+              <option value="">-- 날짜 선택 --</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 미리보기 영역 -->
+    <div id="viewerPreview" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button onclick="downloadViewerExcel()" style="flex:1;padding:11px;background:var(--orange);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">📊 Excel 다운로드</button>
+      </div>
+      <!-- 미리보기 표 -->
+      <div id="viewerContent" style="background:#fff;border-radius:12px;box-shadow:var(--shadow);overflow:hidden"></div>
+    </div>
+    <div id="viewerEmpty" style="text-align:center;padding:40px;color:var(--gray)">현장과 날짜를 선택하세요</div>
+  </div>
+
+  <!-- 계정 관리 -->
   <div class="page" id="adm-users" style="padding:14px;padding-bottom:40px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div style="font-size:13px;font-weight:700;color:var(--navy)">👤 계정 목록</div>
-      <button onclick="openAddUserModal()" style="background:var(--orange);color:#fff;border:none;border-radius:18px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">+ 계정 추가</button>
+      <button id="btnAddUser" onclick="openAddUserModal()" style="background:var(--orange);color:#fff;border:none;border-radius:18px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">+ 계정 추가</button>
     </div>
     <div id="admUserList"><div style="text-align:center;padding:20px 0;color:var(--gray)">로딩 중...</div></div>
   </div>
@@ -825,12 +865,20 @@ function doLogout(){
   showScreen('scLogin');
   $id('loginId').value=''; $id('loginPw').value='';
 }
+function isMaster(){ return currentUser?.role==='master'; }
+function isAdminOrMaster(){ return currentUser?.role==='admin'||currentUser?.role==='master'; }
+
 function afterLogin(){
-  if(currentUser.role==='admin'){
-    $id('admUserName').textContent='👑 '+currentUser.name;
+  if(isAdminOrMaster()){
+    const roleLabel = isMaster() ? '⭐ MASTER' : '👑 관리자';
+    $id('admUserName').textContent=`${roleLabel}: ${currentUser.name}`;
+    // MASTER만 계정관리 탭 표시
+    const tabUsers=$id('tabUsers');
+    if(tabUsers) tabUsers.style.display=isMaster()?'flex':'none';
     showScreen('scAdmin');
     loadAdminDashboard();
-    loadAdminUsers();
+    loadViewerSites();
+    if(isMaster()) loadAdminUsers();
   } else {
     $id('homeUserBadge').textContent='👤 '+currentUser.name;
     $id('addSiteBtn').style.display='block';
@@ -1998,17 +2046,20 @@ async function loadAdminUsers(){
     const allSites = await api('GET','/sites');
     list.innerHTML='';
     users.forEach(u=>{
+      if(u.role==='master') return; // master 계정은 목록에서 숨김
       const assignedSites=allSites.filter(s=>(u.siteIds||[]).includes(s.id)).map(s=>s.name).join(', ')||'없음';
+      const roleLabel = u.role==='admin'?'관리자':'현장담당';
+      const roleClass = u.role==='admin'?'role-admin':'role-user';
       const div=document.createElement('div');
       div.className='user-row';
       div.innerHTML=`
-        <div>
+        <div style="flex:1">
           <div class="user-name">${u.name} <span style="font-size:10px;color:var(--gray)">(${u.username})</span></div>
           <div style="font-size:10px;color:var(--gray);margin-top:2px">현장: ${assignedSites}</div>
         </div>
-        <span class="user-role ${u.role==='admin'?'role-admin':'role-user'}">${u.role==='admin'?'관리자':'현장담당'}</span>
-        ${u.role!=='admin'?`<button onclick="openEditUserModal(${JSON.stringify(u).replace(/"/g,'&quot;')})" style="background:#f0f4ff;border:none;color:var(--navy);border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">✏️</button>
-        <button onclick="deleteUser('${u.id}')" style="background:#fee2e2;border:none;color:#dc2626;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">🗑</button>`:''}`;
+        <span class="user-role ${roleClass}">${roleLabel}</span>
+        <button onclick="openEditUserModal(${JSON.stringify(u).replace(/"/g,'&quot;')})" style="background:#f0f4ff;border:none;color:var(--navy);border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">✏️</button>
+        ${isMaster()?`<button onclick="deleteUser('${u.id}')" style="background:#fee2e2;border:none;color:#dc2626;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">🗑</button>`:''}`;
       list.appendChild(div);
     });
   }catch(e){ if(list) list.innerHTML=`<div style="color:#dc2626;font-size:12px">로드 실패: ${e.message}</div>`; }
@@ -2038,10 +2089,16 @@ async function showUserModal(u){
       <div style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:14px">${_editUserId?'계정 수정':'계정 추가'}</div>
       ${!_editUserId?`<input id="muUsername" class="login-inp" placeholder="아이디" value="${u.username||''}">
       <input id="muPassword" class="login-inp" type="password" placeholder="비밀번호">`:
-      `<div style="font-size:12px;color:var(--gray);margin-bottom:10px">아이디: ${u.username}</div>
-      <input id="muPassword" class="login-inp" type="password" placeholder="비밀번호 변경 (선택사항)">`}
+      `<div style="font-size:12px;color:var(--gray);margin-bottom:6px">아이디: <b>${u.username}</b></div>
+      <input id="muPassword" class="login-inp" type="password" placeholder="비밀번호 변경 (비워두면 유지)">`}
       <input id="muName" class="login-inp" placeholder="이름" value="${u.name||''}">
-      <div style="font-size:11px;font-weight:700;color:var(--navy);margin:10px 0 6px">담당 현장 지정</div>
+      ${isMaster()?`
+      <div style="font-size:11px;font-weight:700;color:var(--navy);margin:8px 0 4px">역할</div>
+      <select id="muRole" class="login-inp" style="margin-bottom:10px">
+        <option value="user" ${(u.role||'user')==='user'?'selected':''}>현장담당 (USER)</option>
+        <option value="admin" ${u.role==='admin'?'selected':''}>관리자 (ADMIN)</option>
+      </select>`:''}
+      <div style="font-size:11px;font-weight:700;color:var(--navy);margin:8px 0 4px">담당 현장</div>
       <div id="muSites" style="max-height:160px;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px;padding:6px 10px">${siteChecks||'<div style="color:var(--gray);font-size:11px;padding:8px 0">등록된 현장이 없습니다</div>'}</div>
       <div style="display:flex;gap:8px;margin-top:14px">
         <button onclick="saveUserModal()" style="flex:1;padding:13px;background:var(--orange);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">저장</button>
@@ -2054,17 +2111,18 @@ async function showUserModal(u){
 async function saveUserModal(){
   const name=document.querySelector('#muName')?.value.trim();
   const pw=document.querySelector('#muPassword')?.value;
+  const role=document.querySelector('#muRole')?.value||'user';
   const siteIds=[...document.querySelectorAll('#muSites input:checked')].map(cb=>cb.value);
   if(!name){toast('이름을 입력하세요'); return;}
   try{
     if(_editUserId){
-      const body={name, siteIds};
+      const body={name, siteIds, role};
       if(pw) body.password=pw;
       await api('PUT','/users/'+_editUserId, body);
     } else {
       const username=document.querySelector('#muUsername')?.value.trim();
       if(!username||!pw){toast('아이디와 비밀번호를 입력하세요'); return;}
-      await api('POST','/users',{username, password:pw, name, role:'user', siteIds});
+      await api('POST','/users',{username, password:pw, name, role, siteIds});
     }
     document.querySelector('[style*="position:fixed"][style*="9999"]')?.remove();
     loadAdminUsers();
@@ -2078,8 +2136,128 @@ async function deleteUser(id){
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// 비밀번호 변경 모달
+// 일보 조회 (날짜 선택 + Excel 미리보기)
 // ══════════════════════════════════════════════════════════════════════
+let _viewerSites=[], _viewerReports=[], _viewerReport=null, _viewerPhotos=[];
+
+async function loadViewerSites(){
+  try{
+    _viewerSites = await api('GET','/sites');
+    const sel=$id('viewerSite'); if(!sel) return;
+    sel.innerHTML='<option value="">-- 현장 선택 --</option>';
+    _viewerSites.forEach(s=>{
+      const opt=document.createElement('option');
+      opt.value=s.id; opt.textContent=s.name;
+      sel.appendChild(opt);
+    });
+  }catch(e){}
+}
+
+async function loadViewerDates(){
+  const siteId=$id('viewerSite')?.value;
+  const dateSel=$id('viewerDate');
+  if(!siteId||!dateSel) return;
+  dateSel.innerHTML='<option value="">로딩 중...</option>';
+  $id('viewerPreview').style.display='none';
+  $id('viewerEmpty').style.display='block';
+  try{
+    _viewerReports = await api('GET','/reports/'+siteId);
+    dateSel.innerHTML='<option value="">-- 날짜 선택 --</option>';
+    _viewerReports.forEach(r=>{
+      const opt=document.createElement('option');
+      opt.value=r.id; opt.textContent=`${r.date} (No.${r.no||'-'}) - ${r.author||''}`;
+      dateSel.appendChild(opt);
+    });
+  }catch(e){ dateSel.innerHTML='<option value="">로드 실패</option>'; }
+}
+
+async function loadViewerReport(){
+  const reportId=parseInt($id('viewerDate')?.value);
+  const siteId=$id('viewerSite')?.value;
+  if(!reportId||!siteId){ $id('viewerPreview').style.display='none'; $id('viewerEmpty').style.display='block'; return; }
+
+  _viewerReport=_viewerReports.find(r=>r.id===reportId);
+  if(!_viewerReport) return;
+
+  // 사진 로드
+  try{ _viewerPhotos=await api('GET','/reports/'+siteId+'/img/'+reportId); }catch(e){ _viewerPhotos=[]; }
+
+  // 미리보기 렌더
+  renderViewerPreview(_viewerReport, _viewerPhotos);
+  $id('viewerPreview').style.display='block';
+  $id('viewerEmpty').style.display='none';
+}
+
+function renderViewerPreview(r, photos){
+  const proj=r.project||{};
+  const workers=(r.workers||[]).filter(w=>w.job);
+  const equips=(r.equips||[]).filter(e=>e.name);
+  const mats=(r.materials||[]).filter(m=>m.name);
+  const pct=r.totalPct||0;
+
+  const wRows=workers.map(w=>`
+    <tr>
+      <td style="text-align:left;padding:5px 8px">${w.job}</td>
+      <td>${w.mgr||0}</td><td>${w.emp||0}</td>
+      <td>${(w.hwa||[0,0,0]).reduce((a,b)=>a+b,0)}</td>
+      <td style="color:#e07000;font-weight:700">${w.sub||0}</td>
+      <td>${w.cumul||0}</td>
+      <td style="color:#155724;font-weight:700">${w.pct!=null?w.pct+'%':'-'}</td>
+    </tr>`).join('');
+
+  const eRows=equips.map(e=>`<tr><td style="text-align:left;padding:5px 8px">${e.name}</td><td>${e.qty}대</td><td style="text-align:left">${e.desc||'-'}</td></tr>`).join('');
+  const mRows=mats.map(m=>`<tr><td style="text-align:left;padding:5px 8px">${m.name}</td><td style="text-align:left">${m.spec||'-'}</td><td>${m.qty}</td><td style="text-align:left">${m.unit||'-'}</td></tr>`).join('');
+  const wkRows=(r.works||[]).map((w,i)=>`<tr><td style="color:#888">${i+1}</td><td style="text-align:left;padding:5px 8px">${w}</td></tr>`).join('');
+  const photoHtml=photos.filter(p=>p.dataUrl).map(p=>`
+    <div style="break-inside:avoid">
+      <img src="${p.dataUrl}" style="width:100%;border-radius:6px;border:1px solid #ddd;display:block">
+      ${p.caption?`<div style="font-size:10px;color:#666;text-align:center;padding:3px">${p.caption}</div>`:''}
+    </div>`).join('');
+
+  $id('viewerContent').innerHTML=`
+    <div style="padding:16px;font-family:'맑은 고딕',sans-serif;font-size:12px;color:#1a2744">
+      <h2 style="text-align:center;font-size:18px;letter-spacing:6px;margin-bottom:4px">공  사  일  보</h2>
+      <div style="text-align:center;font-size:10px;color:#666;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #1a2744">
+        No.${r.no||'001'} | ${r.date||''} | 작성자: ${r.author||''}${r.authorTitle?' ('+r.authorTitle+')':''}
+      </div>
+      <!-- 현장정보 -->
+      <div style="background:#1a2744;color:#fff;padding:4px 8px;font-size:11px;font-weight:700;margin-bottom:1px">■ 현장 정보</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:11px">
+        <tr><td style="background:#f0f2f7;padding:4px 8px;width:20%;font-weight:600">공 사 명</td><td style="border:1px solid #ddd;padding:4px 8px">${proj.work||'-'}</td><td style="background:#f0f2f7;padding:4px 8px;width:20%;font-weight:600">현 장 명</td><td style="border:1px solid #ddd;padding:4px 8px">${proj.name||'-'}</td></tr>
+        <tr><td style="background:#f0f2f7;padding:4px 8px;font-weight:600">날씨/기온</td><td style="border:1px solid #ddd;padding:4px 8px">${r.weather||'-'} / ${r.tempMin||'-'}°C ~ ${r.tempMax||'-'}°C</td><td style="background:#f0f2f7;padding:4px 8px;font-weight:600">공정율</td><td style="border:1px solid #ddd;padding:4px 8px;font-weight:700;color:#e07000">${pct}%</td></tr>
+      </table>
+      <!-- 작업인원 -->
+      <div style="background:#1a2744;color:#fff;padding:4px 8px;font-size:11px;font-weight:700;margin-bottom:1px">■ 작업 인원 — 전체 ${r.totalSub||0}명</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:10px;text-align:center">
+        <thead><tr style="background:#2d4a8a;color:#fff"><th style="padding:4px">직종</th><th>관리자</th><th>근로자</th><th>화기·신호·유도</th><th>소계</th><th>누적</th><th>공정율</th></tr></thead>
+        <tbody>${wRows||'<tr><td colspan="7" style="padding:6px;color:#999">없음</td></tr>'}</tbody>
+      </table>
+      ${equips.length?`<div style="background:#1a2744;color:#fff;padding:4px 8px;font-size:11px;font-weight:700;margin-bottom:1px">■ 장비 투입</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:10px;text-align:center">
+        <thead><tr style="background:#2d4a8a;color:#fff"><th style="padding:4px;text-align:left">장비명</th><th>대수</th><th style="text-align:left">작업내용</th></tr></thead>
+        <tbody>${eRows}</tbody></table>`:''}
+      ${mats.length?`<div style="background:#1a2744;color:#fff;padding:4px 8px;font-size:11px;font-weight:700;margin-bottom:1px">■ 자재 입고</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:10px;text-align:center">
+        <thead><tr style="background:#2d4a8a;color:#fff"><th style="padding:4px;text-align:left">자재명</th><th style="text-align:left">규격</th><th>수량</th><th style="text-align:left">단위</th></tr></thead>
+        <tbody>${mRows}</tbody></table>`:''}
+      ${(r.works||[]).length?`<div style="background:#1a2744;color:#fff;padding:4px 8px;font-size:11px;font-weight:700;margin-bottom:1px">■ 작업 내용</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:10px;text-align:center">
+        <thead><tr style="background:#2d4a8a;color:#fff"><th style="padding:4px;width:30px">No</th><th style="text-align:left">공종 및 작업내용</th></tr></thead>
+        <tbody>${wkRows}</tbody></table>`:''}
+      <div style="background:#1a2744;color:#fff;padding:4px 8px;font-size:11px;font-weight:700;margin-bottom:1px">■ 특이사항</div>
+      <div style="border:1px solid #ddd;padding:8px;min-height:32px;font-size:11px;margin-bottom:8px">${r.specialNote||'해당없음'}</div>
+      ${photos.filter(p=>p.dataUrl).length?`<div style="background:#1a2744;color:#fff;padding:4px 8px;font-size:11px;font-weight:700;margin-bottom:6px">■ 현장 사진 (${photos.filter(p=>p.dataUrl).length}장)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${photoHtml}</div>`:''}
+    </div>`;
+}
+
+async function downloadViewerExcel(){
+  if(!_viewerReport){ toast('조회할 일보를 선택하세요'); return; }
+  generateWord(_viewerReport, _viewerPhotos);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 비밀번호 변경 모달
 function openChangePwModal(){
   const modal=document.createElement('div');
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
