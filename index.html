@@ -1536,127 +1536,105 @@ async function generateWord(report, photoArr){
 
     const wRows=workers.map(w=>`
       <tr>
-        <td style="text-align:left;padding:4px 6px">${w.job||''}</td>
-        <td style="text-align:center;padding:4px 6px">${w.mgr||0}</td>
-        <td style="text-align:center;padding:4px 6px">${w.emp||0}</td>
-        <td style="text-align:center;padding:4px 6px">${(w.hwa||[0,0,0]).reduce((a,b)=>a+b,0)}</td>
-        <td style="text-align:center;padding:4px 6px;font-weight:700;color:#e07000">${w.sub||0}</td>
-        <td style="text-align:center;padding:4px 6px">${w.cumul||0}</td>
-        <td style="text-align:center;padding:4px 6px;font-weight:700;color:#155724">${w.pct!==null&&w.pct!==undefined?w.pct+'%':'-'}</td>
+        <td>${w.job||''}</td>
+        <td>${w.mgr||0}</td><td>${w.emp||0}</td>
+        <td>${(w.hwa||[0,0,0]).reduce((a,b)=>a+b,0)}</td>
+        <td class="orange">${w.sub||0}</td>
+        <td>${w.cumul||0}</td>
+        <td class="green">${w.pct!==null&&w.pct!==undefined?w.pct+'%':'-'}</td>
       </tr>`).join('');
 
-    const eRows=equips.map(e=>`
-      <tr>
-        <td style="padding:4px 6px">${e.name}</td>
-        <td style="text-align:center;padding:4px 6px">${e.qty}대</td>
-        <td style="padding:4px 6px">${e.desc||'-'}</td>
-      </tr>`).join('');
+    const eRows=equips.map(e=>`<tr><td>${e.name}</td><td>${e.qty}대</td><td>${e.desc||'-'}</td></tr>`).join('');
+    const mRows=mats.map(m=>`<tr><td>${m.name}</td><td>${m.spec||'-'}</td><td>${m.qty}</td><td>${m.unit||'-'}</td></tr>`).join('');
+    const wkRows=(report.works||[]).map((w,i)=>`<tr><td class="no">${i+1}</td><td>${w}</td></tr>`).join('');
 
-    const mRows=mats.map(m=>`
-      <tr>
-        <td style="padding:4px 6px">${m.name}</td>
-        <td style="padding:4px 6px">${m.spec||'-'}</td>
-        <td style="text-align:center;padding:4px 6px">${m.qty}</td>
-        <td style="padding:4px 6px">${m.unit||'-'}</td>
-      </tr>`).join('');
-
-    const wkRows=(report.works||[]).map((w,i)=>`
-      <tr>
-        <td style="text-align:center;padding:4px 6px;color:#888;width:28px">${i+1}</td>
-        <td style="padding:4px 6px">${w}</td>
-      </tr>`).join('');
-
-    // 사진: 2열, 고정 크기, 여백 포함 - 테두리 안에 딱 맞게
-    let photoRows='';
+    // 사진: 2장씩 한 행, 이미지를 base64로 직접 삽입, 크기 고정
+    let photoHtml='';
     for(let i=0;i<photoList.length;i+=2){
       const p1=photoList[i], p2=photoList[i+1];
-      photoRows+=`<tr>
-        <td style="width:48%;padding:5px;text-align:center;vertical-align:top;border:none">
-          <img src="${p1.dataUrl}" style="width:230px;height:160px;object-fit:cover;display:block;margin:0 auto;border:1px solid #ccc;border-radius:3px">
-          ${p1.caption?`<div style="font-size:7.5pt;color:#555;margin-top:3px;text-align:center">${p1.caption}</div>`:''}
-        </td>
-        <td style="width:4%;border:none"></td>
-        <td style="width:48%;padding:5px;text-align:center;vertical-align:top;border:none">
-          ${p2?`<img src="${p2.dataUrl}" style="width:230px;height:160px;object-fit:cover;display:block;margin:0 auto;border:1px solid #ccc;border-radius:3px">
-          ${p2.caption?`<div style="font-size:7.5pt;color:#555;margin-top:3px;text-align:center">${p2.caption}</div>`:''}`:'' }
-        </td>
-      </tr>`;
+      photoHtml+=`<div class="photo-row">
+        <div class="photo-cell">
+          <img src="${p1.dataUrl}" class="photo-img">
+          ${p1.caption?`<div class="photo-cap">${p1.caption}</div>`:''}
+        </div>
+        <div class="photo-cell">
+          ${p2?`<img src="${p2.dataUrl}" class="photo-img">
+          ${p2.caption?`<div class="photo-cap">${p2.caption}</div>`:''}`:'' }
+        </div>
+      </div>`;
     }
 
     const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
 <style>
-  @page { size:A4 portrait; margin:18mm 18mm 15mm 18mm }
-  * { box-sizing:border-box }
-  body { font-family:'맑은 고딕','Malgun Gothic',sans-serif; font-size:9pt; color:#1a2744; margin:0; padding:0 }
-  h1 { font-size:20pt; text-align:center; letter-spacing:10px; color:#1a2744; margin:0 0 3px 0; font-weight:900 }
-  .subtitle { text-align:center; font-size:8.5pt; color:#666; margin-bottom:12px; border-bottom:2px solid #1a2744; padding-bottom:8px }
-  .section { font-size:9.5pt; font-weight:700; color:#fff; background:#1a2744; padding:4px 10px; margin:10px 0 0 0; border-radius:2px; display:block }
-  table { width:100%; border-collapse:collapse; margin:0; font-size:8.5pt; table-layout:fixed }
-  th { background:#2d4a8a; color:#fff; padding:5px 6px; text-align:center; font-weight:600; border:1px solid #1a2744 }
-  td { padding:4px 6px; border:1px solid #c8cdd8; vertical-align:middle; word-break:break-word }
-  .info-lbl { background:#eef0f7; font-weight:600; width:14%; text-align:center }
-  .info-val { background:#fff; width:22% }
-  tr:nth-child(even) td { background:#f5f6fa }
-  .note { border:1px solid #c8cdd8; padding:8px 10px; min-height:32px; font-size:8.5pt; background:#f9f9fb; border-radius:2px; margin:0 }
-  .sign { text-align:right; font-size:8.5pt; margin-top:18px; border-top:1.5px solid #1a2744; padding-top:7px; display:flex; justify-content:flex-end; gap:50px }
-  .badge { background:#e07000; color:#fff; border-radius:3px; padding:1px 8px; font-size:8pt; font-weight:700; margin-left:8px; vertical-align:middle }
-  .photo-wrap { margin:0; padding:0; border:none; border-collapse:collapse; width:100% }
-  .photo-wrap td { border:none !important; background:#fff !important }
-  @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact } }
+  @page { size:A4; margin:15mm 15mm 12mm 15mm }
+  *{ box-sizing:border-box; margin:0; padding:0 }
+  body{ font-family:'맑은 고딕','Malgun Gothic',sans-serif; font-size:8.5pt; color:#1a2744 }
+  h1{ font-size:18pt; text-align:center; letter-spacing:8px; font-weight:900; padding:6px 0 2px }
+  .sub{ text-align:center; font-size:8pt; color:#555; padding-bottom:6px; border-bottom:2px solid #1a2744; margin-bottom:8px }
+  .sec{ background:#1a2744; color:#fff; font-size:8.5pt; font-weight:700; padding:3px 8px; margin:7px 0 1px; display:block }
+  table{ width:100%; border-collapse:collapse; font-size:8pt }
+  th{ background:#2d4a8a; color:#fff; padding:4px 5px; border:1px solid #1a2744; text-align:center; font-weight:600 }
+  td{ padding:3px 5px; border:1px solid #bec3d0; vertical-align:middle; text-align:center }
+  td.left{ text-align:left }
+  td.no{ width:24px; color:#888 }
+  td.orange{ color:#c05800; font-weight:700 }
+  td.green{ color:#155724; font-weight:700 }
+  .lbl{ background:#edf0f7; font-weight:600; width:12%; text-align:center }
+  .val{ background:#fff; width:22%; text-align:left }
+  tr:nth-child(even) td{ background:#f5f6fb }
+  .note{ border:1px solid #bec3d0; padding:6px 8px; min-height:28px; background:#f9f9fb; font-size:8pt; margin-top:1px }
+  .sign{ display:flex; justify-content:flex-end; gap:60px; font-size:8pt; margin-top:14px; border-top:1.5px solid #1a2744; padding-top:6px }
+  /* 사진 레이아웃 - flexbox로 강제 2열 */
+  .photo-row{ display:flex; gap:8px; margin-bottom:8px; width:100%; page-break-inside:avoid }
+  .photo-cell{ flex:1; text-align:center }
+  .photo-img{ width:100%; height:155px; object-fit:cover; display:block; border:1px solid #ccc }
+  .photo-cap{ font-size:7pt; color:#555; margin-top:2px }
+  @media print{ body{ -webkit-print-color-adjust:exact; print-color-adjust:exact } }
 </style></head><body>
 
 <h1>공 사 일 보</h1>
-<div class="subtitle">
-  No.${report.no||'001'} &nbsp;&nbsp;|&nbsp;&nbsp; ${report.date||''} &nbsp;&nbsp;|&nbsp;&nbsp;
-  작성자: <strong>${report.author||''}${report.authorTitle?' ('+report.authorTitle+')':''}</strong>
-</div>
+<div class="sub">No.${report.no||'001'} &nbsp;|&nbsp; ${report.date||''} &nbsp;|&nbsp; 작성자: <b>${report.author||''}${report.authorTitle?' ('+report.authorTitle+')':''}</b></div>
 
-<span class="section">■ 현장 정보</span>
-<table style="margin-top:1px">
-  <colgroup><col style="width:13%"><col style="width:24%"><col style="width:13%"><col style="width:50%"></colgroup>
-  <tr><td class="info-lbl">공 사 명</td><td class="info-val">${proj.work||'-'}</td><td class="info-lbl">현 장 명</td><td class="info-val">${proj.name||'-'}</td></tr>
-  <tr><td class="info-lbl">발 주 처</td><td class="info-val">${proj.client||'-'}</td><td class="info-lbl">시 공 사</td><td class="info-val">${proj.contractor||'-'}</td></tr>
-  <tr><td class="info-lbl">감 독 관</td><td class="info-val">${proj.supervisor||'-'}</td><td class="info-lbl">현장소장</td><td class="info-val">${proj.manager||'-'}</td></tr>
-  <tr><td class="info-lbl">공사기간</td><td class="info-val">${proj.startDate||'-'} ~ ${proj.endDate||'-'}</td><td class="info-lbl">날씨/기온</td><td class="info-val">${report.weather||'-'} / ${report.tempMin||'-'}°C ~ ${report.tempMax||'-'}°C</td></tr>
+<span class="sec">■ 현장 정보</span>
+<table>
+  <colgroup><col style="width:12%"><col style="width:24%"><col style="width:12%"><col style="width:52%"></colgroup>
+  <tr><td class="lbl">공 사 명</td><td class="val">${proj.work||'-'}</td><td class="lbl">현 장 명</td><td class="val">${proj.name||'-'}</td></tr>
+  <tr><td class="lbl">발 주 처</td><td class="val">${proj.client||'-'}</td><td class="lbl">시 공 사</td><td class="val">${proj.contractor||'-'}</td></tr>
+  <tr><td class="lbl">감 독 관</td><td class="val">${proj.supervisor||'-'}</td><td class="lbl">현장소장</td><td class="val">${proj.manager||'-'}</td></tr>
+  <tr><td class="lbl">공사기간</td><td class="val">${proj.startDate||'-'} ~ ${proj.endDate||'-'}</td><td class="lbl">날씨/기온</td><td class="val">${report.weather||'-'} / ${report.tempMin||'-'}°C ~ ${report.tempMax||'-'}°C</td></tr>
 </table>
 
-<span class="section">■ 작업 인원 <span class="badge">전체 ${report.totalSub||0}명 · 공정율 ${avgPct}%</span></span>
-<table style="margin-top:1px">
-  <colgroup><col style="width:18%"><col style="width:11%"><col style="width:11%"><col style="width:16%"><col style="width:10%"><col style="width:10%"><col style="width:24%"></colgroup>
+<span class="sec">■ 작업 인원 &nbsp;<span style="background:#e07000;color:#fff;border-radius:2px;padding:1px 6px;font-size:7.5pt">전체 ${report.totalSub||0}명 · 공정율 ${avgPct}%</span></span>
+<table>
+  <colgroup><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:15%"><col style="width:10%"><col style="width:10%"><col style="width:23%"></colgroup>
   <thead><tr><th>직종</th><th>관리자</th><th>근로자</th><th>화기·신호·유도</th><th>소계</th><th>누적</th><th>공정율</th></tr></thead>
-  <tbody>${wRows||'<tr><td colspan="7" style="text-align:center;color:#999;padding:8px">없음</td></tr>'}</tbody>
+  <tbody>${wRows||'<tr><td colspan="7" style="color:#999;padding:6px">없음</td></tr>'}</tbody>
 </table>
 
-${equips.length?`<span class="section">■ 장비 투입</span>
-<table style="margin-top:1px">
-  <colgroup><col style="width:35%"><col style="width:15%"><col style="width:50%"></colgroup>
-  <thead><tr><th>장비명</th><th>대수</th><th>작업내용</th></tr></thead>
-  <tbody>${eRows}</tbody>
-</table>`:''}
+${equips.length?`<span class="sec">■ 장비 투입</span>
+<table><colgroup><col style="width:35%"><col style="width:15%"><col style="width:50%"></colgroup>
+<thead><tr><th>장비명</th><th>대수</th><th>작업내용</th></tr></thead>
+<tbody>${eRows}</tbody></table>`:''}
 
-${mats.length?`<span class="section">■ 자재 입고</span>
-<table style="margin-top:1px">
-  <colgroup><col style="width:30%"><col style="width:25%"><col style="width:15%"><col style="width:30%"></colgroup>
-  <thead><tr><th>자재명</th><th>규격</th><th>수량</th><th>단위</th></tr></thead>
-  <tbody>${mRows}</tbody>
-</table>`:''}
+${mats.length?`<span class="sec">■ 자재 입고</span>
+<table><colgroup><col style="width:30%"><col style="width:25%"><col style="width:15%"><col style="width:30%"></colgroup>
+<thead><tr><th>자재명</th><th>규격</th><th>수량</th><th>단위</th></tr></thead>
+<tbody>${mRows}</tbody></table>`:''}
 
-${(report.works||[]).length?`<span class="section">■ 작업 내용</span>
-<table style="margin-top:1px">
-  <colgroup><col style="width:5%"><col style="width:95%"></colgroup>
-  <thead><tr><th>No.</th><th>공종 및 작업내용</th></tr></thead>
-  <tbody>${wkRows}</tbody>
-</table>`:''}
+${(report.works||[]).length?`<span class="sec">■ 작업 내용</span>
+<table><colgroup><col style="width:4%"><col style="width:96%"></colgroup>
+<thead><tr><th>No</th><th style="text-align:left;padding-left:8px">공종 및 작업내용</th></tr></thead>
+<tbody>${wkRows}</tbody></table>`:''}
 
-<span class="section">■ 특이사항</span>
-<div class="note" style="margin-top:1px">${report.specialNote||'해당없음'}</div>
+<span class="sec">■ 특이사항</span>
+<div class="note">${report.specialNote||'해당없음'}</div>
 
-${photoList.length?`<span class="section">■ 현장 사진 (${photoList.length}장)</span>
-<table class="photo-wrap" style="margin-top:4px"><tbody>${photoRows}</tbody></table>`:''}
+${photoList.length?`<span class="sec">■ 현장 사진 (${photoList.length}장)</span>
+<div style="margin-top:4px">${photoHtml}</div>`:''}
 
 <div class="sign">
-  <span>작 성 자 : &nbsp;&nbsp;${report.author||''}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (인)</span>
-  <span>확 인 자 : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (인)</span>
+  <span>작 성 자 :&nbsp; ${report.author||''}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (인)</span>
+  <span>확 인 자 :&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (인)</span>
 </div>
 
 </body></html>`;
