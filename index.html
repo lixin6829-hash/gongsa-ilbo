@@ -1526,233 +1526,289 @@ async function exportWordById(id){
 async function generateWord(report, photoArr){
   toast('📊 Excel 생성 중...');
   try{
-    const proj = report.project||{};
-    const workers = (report.workers||[]).filter(w=>w.job);
-    const equips  = (report.equips||[]).filter(e=>e.name);
-    const mats    = (report.materials||[]).filter(m=>m.name);
-    const works   = (report.works||[]);
-    const photoList = (photoArr&&photoArr.length)?photoArr:(report.photos||[]).filter(p=>p.dataUrl);
-    const pctVals = workers.map(w=>w.pct).filter(p=>p!==null&&p!==undefined&&p!=='');
-    const avgPct  = pctVals.length?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length):0;
+    const proj     = report.project||{};
+    const workers  = (report.workers||[]).filter(w=>w.job);
+    const equips   = (report.equips||[]).filter(e=>e.name);
+    const mats     = (report.materials||[]).filter(m=>m.name);
+    const works    = (report.works||[]);
+    const photoList= (photoArr&&photoArr.length)?photoArr:(report.photos||[]).filter(p=>p.dataUrl);
+    const pctVals  = workers.map(w=>w.pct).filter(p=>p!==null&&p!==undefined&&p!=='');
+    const avgPct   = pctVals.length?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length):0;
 
     const wb = new ExcelJS.Workbook();
     wb.creator = '공사일보';
-    const ws = wb.addWorksheet('공사일보', {
-      pageSetup:{ paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0,
-                  margins:{left:0.5,right:0.5,top:0.6,bottom:0.5,header:0.3,footer:0.3} }
-    });
 
-    // ── 열 너비 ──
-    const cols = [0.8,8,14,8,14,8,14,8,8,8,8,8];
-    cols.forEach((w,i)=>{ ws.getColumn(i+1).width = w; });
-
-    // ── 스타일 헬퍼 ──
+    // ══════════════════════════════════════════════════
+    // 공통 스타일 헬퍼
+    // ══════════════════════════════════════════════════
     const NAVY='1A2744', NAVY2='2D4A8A', ORANGE='F5851F', LGRAY='F0F2F7', WHITE='FFFFFF';
     const font=(bold,size,color)=>({name:'맑은 고딕',bold:!!bold,size:size||9,color:{argb:'FF'+(color||NAVY)}});
     const fill=c=>({type:'pattern',pattern:'solid',fgColor:{argb:'FF'+c}});
     const aln=(h,v,wrap)=>({horizontal:h||'left',vertical:v||'middle',wrapText:!!wrap});
-    const thinSide={style:'thin',color:{argb:'FFC0C8D8'}};
-    const border=()=>({top:thinSide,bottom:thinSide,left:thinSide,right:thinSide});
-    const noBorder=()=>({});
+    const thin={style:'thin',color:{argb:'FFC0C8D8'}};
+    const bdr=()=>({top:thin,bottom:thin,left:thin,right:thin});
+    const noBdr=()=>({});
 
-    function mc(r,cs,ce,val,opts={}){
+    function mc(ws,r,cs,ce,val,o={}){
       if(cs!==ce) ws.mergeCells(r,cs,r,ce);
-      const cell=ws.getCell(r,cs);
-      cell.value=val||'';
-      cell.font=font(opts.bold,opts.sz||9,opts.color||NAVY);
-      if(opts.bg) cell.fill=fill(opts.bg);
-      cell.alignment=aln(opts.h||'left','middle',opts.wrap);
-      cell.border=opts.nb?noBorder():border();
-      return cell;
+      const c=ws.getCell(r,cs);
+      c.value=(val===0||val)?val:'';
+      c.font=font(o.bold,o.sz||9,o.color||NAVY);
+      if(o.bg) c.fill=fill(o.bg);
+      c.alignment=aln(o.h||'left','middle',o.wrap);
+      c.border=o.nb?noBdr():bdr();
+      return c;
     }
-    function secHdr(r,text){
-      ws.mergeCells(r,2,r,12);
+    function secHdr(ws,r,text){
+      ws.mergeCells(r,2,r,13);
       const c=ws.getCell(r,2);
       c.value=text; c.font=font(true,9,WHITE); c.fill=fill(NAVY);
-      c.alignment=aln('left','middle'); c.border=noBorder();
-      ws.getRow(r).height=16;
+      c.alignment=aln('left','middle'); c.border=noBdr();
+      ws.getRow(r).height=15;
     }
+
+    // ══════════════════════════════════════════════════
+    // 시트 1: 일보 내용
+    // ══════════════════════════════════════════════════
+    const ws1 = wb.addWorksheet('공사일보', {
+      pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:1,
+                 margins:{left:0.4,right:0.4,top:0.5,bottom:0.4,header:0.2,footer:0.2}}
+    });
+
+    // 열 너비 (A~N, 총 14열)
+    [0.6,7,13,7,13,7,13,7,7,8,8,8,8,0.6].forEach((w,i)=>ws1.getColumn(i+1).width=w);
 
     let row=1;
 
-    // ── 제목 ──
-    ws.getRow(row).height=28;
-    mc(row,2,12,'공  사  일  보',{bold:true,sz:18,h:'center',nb:true});
-    row++;
+    // 제목
+    ws1.getRow(row).height=26;
+    mc(ws1,row,2,13,'공  사  일  보',{bold:true,sz:17,h:'center',nb:true}); row++;
 
-    // ── 부제목 ──
-    ws.getRow(row).height=13;
-    mc(row,2,12,`No.${report.no||'001'}  |  ${report.date||''}  |  작성자: ${report.author||''}${report.authorTitle?' ('+report.authorTitle+')':''}`,
-      {sz:8,color:'666666',h:'center',nb:true});
-    row++;
+    // 부제목
+    ws1.getRow(row).height=12;
+    mc(ws1,row,2,13,`No.${report.no||'001'}  |  ${report.date||''}  |  작성자: ${report.author||''}${report.authorTitle?' ('+report.authorTitle+')':''}`,
+      {sz:8,color:'666666',h:'center',nb:true}); row++;
 
     // 구분선
-    ws.getRow(row).height=3;
-    ws.mergeCells(row,2,row,12);
-    ws.getCell(row,2).fill=fill(NAVY);
-    ws.getCell(row,2).border=noBorder();
-    row++;
+    ws1.getRow(row).height=3;
+    ws1.mergeCells(row,2,row,13);
+    ws1.getCell(row,2).fill=fill(NAVY); ws1.getCell(row,2).border=noBdr(); row++;
 
     // ── 현장 정보 ──
-    secHdr(row,'  ■  현장 정보'); row++;
-    const info=[
-      ['공 사 명',proj.work||'-','현 장 명',proj.name||'-'],
-      ['발 주 처',proj.client||'-','시 공 사',proj.contractor||'-'],
-      ['감 독 관',proj.supervisor||'-','현장소장',proj.manager||'-'],
-      ['공사기간',(proj.startDate||'-')+' ~ '+(proj.endDate||'-'),'날씨/기온',(report.weather||'-')+' / '+(report.tempMin||'-')+'°C ~ '+(report.tempMax||'-')+'°C'],
-    ];
-    info.forEach(([l1,v1,l2,v2])=>{
-      ws.getRow(row).height=15;
-      mc(row,2,3,l1,{bold:true,h:'center',bg:LGRAY});
-      mc(row,4,6,v1,{bg:WHITE,wrap:true});
-      mc(row,7,8,l2,{bold:true,h:'center',bg:LGRAY});
-      mc(row,9,12,v2,{bg:WHITE,wrap:true});
+    secHdr(ws1,row,'  ■  현장 정보'); row++;
+    [['공 사 명',proj.work||'-','현 장 명',proj.name||'-'],
+     ['발 주 처',proj.client||'-','시 공 사',proj.contractor||'-'],
+     ['감 독 관',proj.supervisor||'-','현장소장',proj.manager||'-'],
+     ['공사기간',(proj.startDate||'-')+' ~ '+(proj.endDate||'-'),'날씨/기온',(report.weather||'-')+' / '+(report.tempMin||'-')+'°C ~ '+(report.tempMax||'-')+'°C'],
+    ].forEach(([l1,v1,l2,v2])=>{
+      ws1.getRow(row).height=14;
+      mc(ws1,row,2,3,l1,{bold:true,h:'center',bg:LGRAY});
+      mc(ws1,row,4,6,v1,{bg:WHITE,wrap:true});
+      mc(ws1,row,7,8,l2,{bold:true,h:'center',bg:LGRAY});
+      mc(ws1,row,9,13,v2,{bg:WHITE,wrap:true});
       row++;
     });
 
     // ── 작업 인원 ──
-    secHdr(row,`  ■  작업 인원   전체 ${report.totalSub||0}명 · 공정율 ${avgPct}%`); row++;
-    ws.getRow(row).height=14;
-    const wHdrs=[['직종',2,3],['관리자',4,4],['근로자',5,5],['화기',6,6],['신호',7,7],['유도',8,8],['소계',9,9],['누적',10,10],['공정율',11,12]];
-    wHdrs.forEach(([h,cs,ce])=>{ mc(row,cs,ce,h,{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2}); });
+    secHdr(ws1,row,`  ■  작업 인원    전체 ${report.totalSub||0}명  ·  공정율 ${avgPct}%`); row++;
+    ws1.getRow(row).height=13;
+    [['직종',2,3],['관리자',4,4],['근로자',5,5],['화기',6,6],['신호',7,7],['유도',8,8],['소계',9,9],['누적',10,10],['공정율',11,13]]
+      .forEach(([h,cs,ce])=>mc(ws1,row,cs,ce,h,{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2}));
     row++;
-
     workers.forEach((w,i)=>{
-      ws.getRow(row).height=14;
-      const sub=w.sub||0;
+      ws1.getRow(row).height=13;
       const bg=i%2===0?WHITE:LGRAY;
-      mc(row,2,3,w.job||'',{sz:8,bg});
-      mc(row,4,4,w.mgr||0,{sz:8,h:'center',bg});
-      mc(row,5,5,w.emp||0,{sz:8,h:'center',bg});
-      mc(row,6,6,(w.hwa||[0,0,0])[0]||0,{sz:8,h:'center',bg});
-      mc(row,7,7,(w.hwa||[0,0,0])[1]||0,{sz:8,h:'center',bg});
-      mc(row,8,8,(w.hwa||[0,0,0])[2]||0,{sz:8,h:'center',bg});
-      mc(row,9,9,sub,{sz:8,h:'center',bg,bold:true,color:ORANGE});
-      mc(row,10,10,w.cumul||0,{sz:8,h:'center',bg});
-      mc(row,11,12,w.pct!==null&&w.pct!==undefined?w.pct+'%':'-',{sz:8,h:'center',bg,bold:true,color:'155724'});
+      const sub=w.sub||0;
+      mc(ws1,row,2,3,w.job||'',{sz:8,bg});
+      [w.mgr||0,w.emp||0,(w.hwa||[0,0,0])[0]||0,(w.hwa||[0,0,0])[1]||0,(w.hwa||[0,0,0])[2]||0]
+        .forEach((v,ci)=>mc(ws1,row,4+ci,4+ci,v||null,{sz:8,h:'center',bg}));
+      mc(ws1,row,9,9,sub||null,{sz:8,h:'center',bg,bold:true,color:ORANGE});
+      mc(ws1,row,10,10,w.cumul||null,{sz:8,h:'center',bg});
+      mc(ws1,row,11,13,w.pct!=null?w.pct+'%':'-',{sz:8,h:'center',bg,bold:true,color:'155724'});
       row++;
     });
 
     // ── 장비 ──
     if(equips.length){
-      secHdr(row,'  ■  장비 투입'); row++;
-      ws.getRow(row).height=14;
-      mc(row,2,5,'장비명',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
-      mc(row,6,7,'대수',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
-      mc(row,8,12,'작업내용',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
+      secHdr(ws1,row,'  ■  장비 투입'); row++;
+      ws1.getRow(row).height=13;
+      mc(ws1,row,2,5,'장비명',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
+      mc(ws1,row,6,7,'대수',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
+      mc(ws1,row,8,13,'작업내용',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
       row++;
       equips.forEach((e,i)=>{
-        ws.getRow(row).height=14;
+        ws1.getRow(row).height=13;
         const bg=i%2===0?WHITE:LGRAY;
-        mc(row,2,5,e.name,{sz:8,bg});
-        mc(row,6,7,e.qty+'대',{sz:8,h:'center',bg});
-        mc(row,8,12,e.desc||'-',{sz:8,bg,wrap:true});
+        mc(ws1,row,2,5,e.name,{sz:8,bg});
+        mc(ws1,row,6,7,e.qty+'대',{sz:8,h:'center',bg});
+        mc(ws1,row,8,13,e.desc||'-',{sz:8,bg,wrap:true});
         row++;
       });
     }
 
     // ── 자재 ──
     if(mats.length){
-      secHdr(row,'  ■  자재 입고'); row++;
-      ws.getRow(row).height=14;
-      mc(row,2,4,'자재명',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
-      mc(row,5,7,'규격',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
-      mc(row,8,9,'수량',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
-      mc(row,10,12,'단위',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
+      secHdr(ws1,row,'  ■  자재 입고'); row++;
+      ws1.getRow(row).height=13;
+      mc(ws1,row,2,4,'자재명',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
+      mc(ws1,row,5,7,'규격',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
+      mc(ws1,row,8,9,'수량',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
+      mc(ws1,row,10,13,'단위',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
       row++;
       mats.forEach((m,i)=>{
-        ws.getRow(row).height=14;
+        ws1.getRow(row).height=13;
         const bg=i%2===0?WHITE:LGRAY;
-        mc(row,2,4,m.name,{sz:8,bg});
-        mc(row,5,7,m.spec||'-',{sz:8,bg});
-        mc(row,8,9,m.qty,{sz:8,h:'center',bg});
-        mc(row,10,12,m.unit||'-',{sz:8,bg});
+        mc(ws1,row,2,4,m.name,{sz:8,bg});
+        mc(ws1,row,5,7,m.spec||'-',{sz:8,bg});
+        mc(ws1,row,8,9,m.qty,{sz:8,h:'center',bg});
+        mc(ws1,row,10,13,m.unit||'-',{sz:8,bg});
         row++;
       });
     }
 
-    // ── 작업 내용 ──
+    // ── 작업 내용 (크게) ──
+    secHdr(ws1,row,'  ■  작업 내용'); row++;
+    ws1.getRow(row).height=13;
+    mc(ws1,row,2,2,'No',{bold:true,sz:8,color:WHITE,h:'center',bg:NAVY2});
+    mc(ws1,row,3,13,'공종 및 작업내용',{bold:true,sz:8,color:WHITE,h:'left',bg:NAVY2});
+    row++;
     if(works.length){
-      secHdr(row,'  ■  작업 내용'); row++;
       works.forEach((w,i)=>{
-        ws.getRow(row).height=14;
+        ws1.getRow(row).height=18; // 작업내용 행 높이 크게
         const bg=i%2===0?WHITE:LGRAY;
-        mc(row,2,2,i+1,{sz:8,h:'center',color:'888888',bg});
-        mc(row,3,12,w,{sz:8,bg,wrap:true});
+        mc(ws1,row,2,2,i+1,{sz:8,h:'center',color:'888888',bg});
+        mc(ws1,row,3,13,w,{sz:9,bg,wrap:true});
         row++;
       });
+    } else {
+      ws1.getRow(row).height=18;
+      mc(ws1,row,2,13,'',{bg:WHITE}); row++;
     }
+    // 빈 줄 2개 (여백)
+    for(let k=0;k<2;k++){ ws1.getRow(row).height=18; mc(ws1,row,2,13,'',{bg:WHITE}); row++; }
 
     // ── 특이사항 ──
-    secHdr(row,'  ■  특이사항'); row++;
-    ws.getRow(row).height=24;
-    mc(row,2,12,report.specialNote||'해당없음',{sz:8,bg:WHITE,wrap:true});
+    secHdr(ws1,row,'  ■  특이사항'); row++;
+    ws1.getRow(row).height=30;
+    mc(ws1,row,2,13,report.specialNote||'해당없음',{sz:9,bg:WHITE,wrap:true}); row++;
+
+    // 구분선
+    ws1.getRow(row).height=3;
+    ws1.mergeCells(row,2,row,13);
+    ws1.getCell(row,2).fill=fill(NAVY); ws1.getCell(row,2).border=noBdr(); row++;
+
+    // 서명란
+    ws1.getRow(row).height=20;
+    mc(ws1,row,2,6,`작  성  자 :   ${report.author||''}              (인)`,{sz:9,nb:true});
+    mc(ws1,row,7,13,'확  인  자 :                                    (인)',{sz:9,h:'right',nb:true});
     row++;
 
-    // ── 현장 사진 ──
+    ws1.pageSetup.printArea=`A1:N${row}`;
+
+    // ══════════════════════════════════════════════════
+    // 시트 2: 현장 사진 (4장/페이지)
+    // ══════════════════════════════════════════════════
     if(photoList.length){
-      secHdr(row,`  ■  현장 사진 (${photoList.length}장)`); row++;
+      const ws2 = wb.addWorksheet('현장사진', {
+        pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:1,
+                   margins:{left:0.4,right:0.4,top:0.5,bottom:0.4,header:0.2,footer:0.2}}
+      });
 
-      for(let pi=0; pi<photoList.length; pi+=2){
-        const p1=photoList[pi], p2=photoList[pi+1];
-        const photoStartRow=row;
+      // 열 너비: A(여백) B~G(사진1) H~M(사진2) N(여백)
+      [0.6,6.5,6.5,6.5,6.5,6.5,6.5,6.5,6.5,6.5,6.5,6.5,6.5,0.6]
+        .forEach((w,i)=>ws2.getColumn(i+1).width=w);
 
-        // 사진 높이 = 약 110px → 11행 × 10pt
-        for(let pr=row;pr<row+11;pr++) ws.getRow(pr).height=10.5;
+      let pr=1;
+      // 시트2 제목
+      ws2.getRow(pr).height=22;
+      mc(ws2,pr,2,13,'현  장  사  진',{bold:true,sz:15,h:'center',nb:true}); pr++;
+      ws2.getRow(pr).height=12;
+      mc(ws2,pr,2,13,`${report.date||''} | ${proj.name||''} | No.${report.no||'001'}`,
+        {sz:8,color:'666666',h:'center',nb:true}); pr++;
+      ws2.getRow(pr).height=3;
+      ws2.mergeCells(pr,2,pr,13);
+      ws2.getCell(pr,2).fill=fill(NAVY); ws2.getCell(pr,2).border=noBdr(); pr++;
 
-        // 사진 1 (B열 ~ F열)
-        if(p1&&p1.dataUrl){
-          try{
-            const b64=p1.dataUrl.split(',')[1];
-            const ext=p1.dataUrl.includes('png')?'png':'jpeg';
-            const imgId=wb.addImage({base64:b64, extension:ext});
-            ws.addImage(imgId,{tl:{col:1,row:photoStartRow-1},br:{col:6,row:photoStartRow+10}});
-          }catch(e){}
+      // 4장씩 한 페이지
+      for(let pi=0; pi<photoList.length; pi+=4){
+        const chunk=photoList.slice(pi,pi+4);
+
+        // 상단 2장
+        const topRow=pr;
+        const topH=13; // 행 높이 × topH행 = 사진 높이
+        for(let k=0;k<topH;k++){ ws2.getRow(pr+k).height=13; }
+
+        [chunk[0],chunk[1]].forEach((p,idx)=>{
+          if(p&&p.dataUrl){
+            try{
+              const b64=p.dataUrl.split(',')[1];
+              const ext=p.dataUrl.includes('png')?'png':'jpeg';
+              const imgId=wb.addImage({base64:b64,extension:ext});
+              const colStart=idx===0?1:7; // B열 or H열 (0-indexed)
+              ws2.addImage(imgId,{
+                tl:{col:colStart,row:topRow-1},
+                br:{col:colStart+6,row:topRow+topH-1},
+                editAs:'oneCell'
+              });
+            }catch(e){}
+          }
+        });
+        pr+=topH;
+
+        // 캡션 행 (상단 2장)
+        ws2.getRow(pr).height=13;
+        if(chunk[0]) mc(ws2,pr,2,7,chunk[0].caption?'▲ '+chunk[0].caption:'',{sz:8,color:'444444',h:'center',nb:true});
+        if(chunk[1]) mc(ws2,pr,8,13,chunk[1].caption?'▲ '+chunk[1].caption:'',{sz:8,color:'444444',h:'center',nb:true});
+        pr++;
+
+        // 간격
+        ws2.getRow(pr).height=6; pr++;
+
+        // 하단 2장
+        const botRow=pr;
+        for(let k=0;k<topH;k++){ ws2.getRow(pr+k).height=13; }
+        [chunk[2],chunk[3]].forEach((p,idx)=>{
+          if(p&&p.dataUrl){
+            try{
+              const b64=p.dataUrl.split(',')[1];
+              const ext=p.dataUrl.includes('png')?'png':'jpeg';
+              const imgId=wb.addImage({base64:b64,extension:ext});
+              const colStart=idx===0?1:7;
+              ws2.addImage(imgId,{
+                tl:{col:colStart,row:botRow-1},
+                br:{col:colStart+6,row:botRow+topH-1},
+                editAs:'oneCell'
+              });
+            }catch(e){}
+          }
+        });
+        pr+=topH;
+
+        // 캡션 행 (하단 2장)
+        ws2.getRow(pr).height=13;
+        if(chunk[2]) mc(ws2,pr,2,7,chunk[2].caption?'▲ '+chunk[2].caption:'',{sz:8,color:'444444',h:'center',nb:true});
+        if(chunk[3]) mc(ws2,pr,8,13,chunk[3].caption?'▲ '+chunk[3].caption:'',{sz:8,color:'444444',h:'center',nb:true});
+        pr++;
+
+        // 페이지 구분 (4장 이후 다음 페이지)
+        if(pi+4<photoList.length){
+          ws2.getRow(pr).height=8; pr++;
+          ws2.getRow(pr).height=3;
+          ws2.mergeCells(pr,2,pr,13);
+          ws2.getCell(pr,2).fill=fill(LGRAY); pr++;
         }
-        // 사진 2 (G열 ~ L열)
-        if(p2&&p2.dataUrl){
-          try{
-            const b64=p2.dataUrl.split(',')[1];
-            const ext=p2.dataUrl.includes('png')?'png':'jpeg';
-            const imgId=wb.addImage({base64:b64, extension:ext});
-            ws.addImage(imgId,{tl:{col:6,row:photoStartRow-1},br:{col:12,row:photoStartRow+10}});
-          }catch(e){}
-        }
-        row+=11;
-
-        // 캡션 행
-        ws.getRow(row).height=12;
-        mc(row,2,6,p1?.caption?'▲ '+p1.caption:'',{sz:7,color:'666666',h:'center',nb:true});
-        if(p2) mc(row,7,12,p2?.caption?'▲ '+p2.caption:'',{sz:7,color:'666666',h:'center',nb:true});
-        row++;
       }
+      ws2.pageSetup.printArea=`A1:N${pr}`;
     }
-
-    // ── 서명란 ──
-    ws.getRow(row).height=4;
-    ws.mergeCells(row,2,row,12);
-    ws.getCell(row,2).fill=fill(NAVY);
-    ws.getCell(row,2).border=noBorder();
-    row++;
-    ws.getRow(row).height=18;
-    mc(row,2,6,`작  성  자 :   ${report.author||''}                (인)`,{sz:8,nb:true});
-    mc(row,7,12,'확  인  자 :                              (인)',{sz:8,h:'right',nb:true});
-    row++;
-
-    // ── 인쇄 영역 ──
-    ws.pageSetup.printArea=`A1:M${row}`;
 
     // ── 다운로드 ──
     const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const blob = new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `공사일보_${report.date||'미정'}_No${report.no||'0'}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    a.href=url; a.download=`공사일보_${report.date||'미정'}_No${report.no||'0'}.xlsx`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
     toast('📊 Excel 저장 완료!');
 
   }catch(err){
