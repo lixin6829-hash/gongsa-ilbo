@@ -899,7 +899,7 @@ async function renderHome(){
         <div class="site-name">${s.name}</div>
         <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">
           <button class="icon-btn" style="background:#f0f4ff;color:var(--navy)" onclick="event.stopPropagation();editSite('${s.id}')">✏️</button>
-          ${isAdmin()?`<button class="icon-btn" style="background:#fee2e2;color:#dc2626" onclick="event.stopPropagation();deleteSite('${s.id}')">🗑</button>`:''}
+          <button class="icon-btn" style="background:#fee2e2;color:#dc2626" onclick="event.stopPropagation();deleteSite('${s.id}')">🗑</button>
         </div>
       </div>
       <div class="site-sub">${s.work||''} ${s.supervisor?'· 감독관: '+s.supervisor:''}</div>
@@ -994,7 +994,6 @@ async function saveSite(){
   }catch(e){ setSyncBadge('err'); toast('❌ 저장 실패: '+e.message); }
 }
 async function deleteSite(id){
-  if(!isAdmin()){toast('❗ 관리자만 삭제 가능합니다'); return;}
   const s=sites.find(x=>x.id===id);
   if(!confirm(`"${s?.name}" 현장을 삭제하시겠습니까?\n일보도 모두 삭제됩니다.`)) return;
   try{
@@ -1510,94 +1509,105 @@ async function exportWordById(id){
 }
 
 async function generateWord(report, photoArr){
-  toast('Word 생성 중... (10~20초 소요)');
+  toast('📄 Word 생성 중...');
   try{
     const proj=report.project||{};
     const workers=(report.workers||[]).filter(w=>w.job);
     const equips=(report.equips||[]).filter(e=>e.name);
     const mats=(report.materials||[]).filter(m=>m.name);
     const photoList=(photoArr&&photoArr.length)?photoArr:(report.photos||[]).filter(p=>p.dataUrl);
-
     const pctVals=workers.map(w=>w.pct).filter(p=>p!==null&&p!==undefined&&p!=='');
-    const avgPct=pctVals.length?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length):null;
+    const avgPct=pctVals.length?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length):0;
 
-    const photoData=photoList.map(p=>({
-      b64: p.dataUrl ? p.dataUrl.split(',')[1] : null,
-      ext: p.dataUrl&&p.dataUrl.includes('png') ? 'png' : 'jpeg',
-      caption: p.caption||''
-    })).filter(p=>p.b64);
+    // ── HTML → 인쇄 → 저장 방식 (별도 창) ──
+    const wRows=workers.map(w=>`
+      <tr>
+        <td>${w.job||''}</td>
+        <td style="text-align:center">${w.mgr||0}</td>
+        <td style="text-align:center">${w.emp||0}</td>
+        <td style="text-align:center">${(w.hwa||[0,0,0]).reduce((a,b)=>a+b,0)}</td>
+        <td style="text-align:center;font-weight:700;color:#f5851f">${w.sub||0}</td>
+        <td style="text-align:center">${w.cumul||0}</td>
+        <td style="text-align:center;font-weight:700;color:#065f46">${w.pct!==null&&w.pct!==undefined?w.pct+'%':'-'}</td>
+      </tr>`).join('');
+    const eRows=equips.map(e=>`<tr><td>${e.name}</td><td style="text-align:center">${e.qty}대</td><td>${e.desc||'-'}</td></tr>`).join('');
+    const mRows=mats.map(m=>`<tr><td>${m.name}</td><td>${m.spec||'-'}</td><td style="text-align:center">${m.qty}</td><td>${m.unit||'-'}</td></tr>`).join('');
+    const wkRows=report.works?.map((w,i)=>`<tr><td style="text-align:center;color:#6b7694">${i+1}</td><td>${w}</td></tr>`).join('')||'';
+    const photoHtml=photoList.map(p=>`
+      <div style="break-inside:avoid;margin-bottom:14px">
+        <img src="${p.dataUrl}" style="width:100%;max-height:200px;object-fit:cover;border-radius:6px;border:1px solid #ddd">
+        ${p.caption?`<div style="font-size:11px;color:#555;margin-top:4px;text-align:center">${p.caption}</div>`:''}
+      </div>`).join('');
 
-    // Python 코드 생성
-    const pythonCode=`import base64,io,json
-from docx import Document
-from docx.shared import Pt,Cm,RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_ALIGN_VERTICAL
-from docx.oxml.ns import qn
-from docx.oxml import OxmlElement
-def rgb(h):
-    h=h.lstrip('#')
-    return RGBColor(int(h[0:2],16),int(h[2:4],16),int(h[4:6],16))
-NAVY='1A2744';ORANGE='F5851F';WHITE='FFFFFF';MGRAY='E2E5EE'
-def shd(cell,color):
-    s=OxmlElement('w:shd');s.set(qn('w:val'),'clear');s.set(qn('w:color'),'auto');s.set(qn('w:fill'),color);cell._tc.get_or_add_tcPr().append(s)
-def bdr(cell):
-    tcPr=cell._tc.get_or_add_tcPr();b=OxmlElement('w:tcBorders')
-    for edge in ['top','left','bottom','right']:
-        t=OxmlElement(f'w:{edge}');t.set(qn('w:val'),'single');t.set(qn('w:sz'),'4');t.set(qn('w:space'),'0');t.set(qn('w:color'),'C0C8D8');b.append(t)
-    tcPr.append(b)
-def ct(cell,text,size=9,bold=False,color=NAVY,align='left'):
-    p=cell.paragraphs[0];p.alignment={'left':WD_ALIGN_PARAGRAPH.LEFT,'center':WD_ALIGN_PARAGRAPH.CENTER,'right':WD_ALIGN_PARAGRAPH.RIGHT}[align]
-    run=p.add_run(str(text) if text is not None else '');run.font.name='맑은 고딕';run.font.size=Pt(size);run.font.bold=bold;run.font.color.rgb=rgb(color)
-d=${JSON.stringify({date:report.date||'',no:report.no||'001',author:report.author||'',authorTitle:report.authorTitle||'',weather:report.weather||'-',tempMin:report.tempMin||'',tempMax:report.tempMax||'',totalSub:report.totalSub||0,totalPct:avgPct,specialNote:report.specialNote||'',proj:{...(report.project||{})},workers:workers.map(w=>({job:w.job,sub:w.sub||0,cumul:w.cumul||0,pct:w.pct})),works:report.works||[],equips:equips.map(e=>({name:e.name,qty:e.qty||0,desc:e.desc||''})),mats:mats.map(m=>({name:m.name,spec:m.spec||'',qty:m.qty||0,unit:m.unit||''}))})}
-photos=${JSON.stringify(photoData.slice(0,20))}
-doc=Document();sec=doc.sections[0];sec.page_width=Cm(21);sec.page_height=Cm(29.7);sec.left_margin=Cm(1.5);sec.right_margin=Cm(1.5);sec.top_margin=Cm(1.5);sec.bottom_margin=Cm(1.5)
-p=doc.add_paragraph();run=p.add_run('공  사  일  보');run.font.name='맑은 고딕';run.font.size=Pt(20);run.font.bold=True;run.font.color.rgb=rgb(NAVY);p.alignment=WD_ALIGN_PARAGRAPH.CENTER
-p2=doc.add_paragraph();run2=p2.add_run(f"작성일: {d['date']}  No.{d['no']}  작성자: {d['author']}");run2.font.name='맑은 고딕';run2.font.size=Pt(10);p2.alignment=WD_ALIGN_PARAGRAPH.CENTER
-doc.add_paragraph()
-t=doc.add_table(rows=1,cols=2);t.style='Table Grid'
-t.rows[0].cells[0].text='날씨';t.rows[0].cells[1].text=str(d['weather'])+(' / '+str(d['tempMin'])+'~'+str(d['tempMax'])+'°C' if d['tempMin'] else '')
-for w in d['workers']:
-    row=t.add_row();row.cells[0].text=str(w['job']);row.cells[1].text=str(w['sub'])+'명  공정율 '+str(w['pct'])+'%' if w['pct'] is not None else str(w['sub'])+'명'
-doc.add_paragraph()
-wp=doc.add_paragraph();wp.add_run('작업내용').bold=True
-for i,wk in enumerate(d['works']):
-    doc.add_paragraph(f'{i+1}. {wk}')
-if d['specialNote']:
-    doc.add_paragraph();sp=doc.add_paragraph();sp.add_run('특이사항: ').bold=True;sp.add_run(d['specialNote'])
-if photos:
-    doc.add_paragraph();pp=doc.add_paragraph();pp.add_run('현장 사진').bold=True
-    for ph in photos:
-        try:
-            img_data=base64.b64decode(ph['b64']);img_stream=io.BytesIO(img_data);doc.add_picture(img_stream,width=Cm(8))
-            if ph.get('caption'):doc.add_paragraph(ph['caption'])
-        except:pass
-buf=io.BytesIO();doc.save(buf);buf.seek(0);import base64 as b64mod;print(b64mod.b64encode(buf.read()).decode())`;
+    const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<style>
+  @page{size:A4;margin:18mm 15mm}
+  body{font-family:'맑은 고딕','Malgun Gothic','Noto Sans KR',sans-serif;font-size:9pt;color:#1a2744;margin:0}
+  h1{font-size:22pt;text-align:center;letter-spacing:8px;color:#1a2744;margin:0 0 4px}
+  .sub-title{text-align:center;font-size:9pt;color:#6b7694;margin-bottom:16px}
+  table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:8.5pt}
+  th{background:#1a2744;color:#fff;padding:6px 8px;text-align:center;font-weight:600}
+  td{padding:5px 8px;border:1px solid #d0d5e0;vertical-align:middle}
+  tr:nth-child(even) td{background:#f8f9fc}
+  .section{font-size:10pt;font-weight:700;color:#1a2744;border-left:4px solid #f5851f;padding-left:8px;margin:14px 0 6px}
+  .info-table td{width:18%;background:#f0f2f7;font-weight:600;font-size:8pt} 
+  .info-table td+td{width:32%;background:#fff;font-weight:400}
+  .badge{display:inline-block;background:#f5851f;color:#fff;border-radius:4px;padding:2px 8px;font-size:8pt;font-weight:700}
+  .photo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .note-box{background:#f8f9fc;border:1px solid #d0d5e0;border-radius:6px;padding:10px;font-size:8.5pt;min-height:40px}
+  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+<h1>공 사 일 보</h1>
+<div class="sub-title">No.${report.no||'001'} &nbsp;|&nbsp; ${report.date||''} &nbsp;|&nbsp; 작성자: ${report.author||''} ${report.authorTitle?'('+report.authorTitle+')':''}</div>
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
-        messages:[{role:'user',content:`다음 Python 코드를 실행하고 결과(base64 문자열)만 출력하세요. 다른 텍스트 없이 base64만:\n\n\`\`\`python\n${pythonCode}\n\`\`\``}]
-      })
-    });
-    if(!resp.ok) throw new Error('API 오류: '+resp.status);
-    const data=await resp.json();
-    const b64=data.content.map(c=>c.text||'').join('').trim();
-    if(!b64||b64.length<100) throw new Error('Word 생성 실패');
-    const byteStr=atob(b64);
-    const bytes=new Uint8Array(byteStr.length);
-    for(let i=0;i<byteStr.length;i++) bytes[i]=byteStr.charCodeAt(i);
-    const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    a.download=`공사일보_${report.date||'미정'}_No${report.no||'0'}.docx`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast('📄 Word 저장 완료!');
+<div class="section">■ 현장 정보</div>
+<table class="info-table">
+  <tr><td>공 사 명</td><td>${proj.work||'-'}</td><td>현 장 명</td><td>${proj.name||'-'}</td></tr>
+  <tr><td>발 주 처</td><td>${proj.client||'-'}</td><td>시 공 사</td><td>${proj.contractor||'-'}</td></tr>
+  <tr><td>감 독 관</td><td>${proj.supervisor||'-'}</td><td>현장소장</td><td>${proj.manager||'-'}</td></tr>
+  <tr><td>공사기간</td><td>${proj.startDate||'-'} ~ ${proj.endDate||'-'}</td><td>날씨/기온</td><td>${report.weather||'-'} / ${report.tempMin||'-'}°C ~ ${report.tempMax||'-'}°C</td></tr>
+</table>
+
+<div class="section">■ 작업 인원 <span class="badge">전체 ${report.totalSub||0}명 · 공정율 ${avgPct}%</span></div>
+<table>
+  <thead><tr><th>직종</th><th>관리자</th><th>근로자</th><th>화기·신호·유도</th><th>소계</th><th>누적</th><th>공정율</th></tr></thead>
+  <tbody>${wRows||'<tr><td colspan="7" style="text-align:center;color:#999">없음</td></tr>'}</tbody>
+</table>
+
+${equips.length?`<div class="section">■ 장비 투입</div>
+<table><thead><tr><th>장비명</th><th>대수</th><th>작업내용</th></tr></thead>
+<tbody>${eRows}</tbody></table>`:''}
+
+${mats.length?`<div class="section">■ 자재 입고</div>
+<table><thead><tr><th>자재명</th><th>규격</th><th>수량</th><th>단위</th></tr></thead>
+<tbody>${mRows}</tbody></table>`:''}
+
+${report.works?.length?`<div class="section">■ 작업 내용</div>
+<table><thead><tr><th style="width:40px">No.</th><th>공종 및 작업내용</th></tr></thead>
+<tbody>${wkRows}</tbody></table>`:''}
+
+<div class="section">■ 특이사항</div>
+<div class="note-box">${report.specialNote||'해당없음'}</div>
+
+${photoList.length?`<div class="section">■ 현장 사진 (${photoList.length}장)</div>
+<div class="photo-grid">${photoHtml}</div>`:''}
+
+<div style="margin-top:30px;border-top:2px solid #1a2744;padding-top:10px;display:flex;justify-content:flex-end;gap:40px;font-size:8.5pt">
+  <span>작 성 자: ${report.author||''} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (인)</span>
+  <span>확 인 자: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (인)</span>
+</div>
+</body></html>`;
+
+    // 새 창에서 인쇄 다이얼로그 열기
+    const w=window.open('','_blank','width=794,height=1123');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(()=>{
+      w.print();
+      toast('📄 인쇄/PDF 저장 창이 열렸습니다 → "PDF로 저장" 선택');
+    }, 800);
+
   }catch(err){
     console.error('Word 오류:',err);
     toast('오류: '+err.message);
