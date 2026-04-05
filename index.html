@@ -330,7 +330,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div style="font-size:14px;font-weight:700;color:var(--navy)">📋 현장 목록</div>
         <span id="syncBadge" class="sync-badge sync-ok">☁ 동기화됨</span>
       </div>
-      <button id="addSiteBtn" onclick="openSiteModal()" style="background:var(--orange);color:#fff;border:none;border-radius:18px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:none">+ 현장 추가</button>
+      <button id="addSiteBtn" onclick="openSiteModal()" style="background:var(--orange);color:#fff;border:none;border-radius:18px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:block">+ 현장 추가</button>
     </div>
     <div id="siteList"></div>
     <div id="siteEmpty" style="text-align:center;padding:40px 0;color:var(--gray);display:none">
@@ -830,7 +830,7 @@ function afterLogin(){
     loadAdminUsers();
   } else {
     $id('homeUserBadge').textContent='👤 '+currentUser.name;
-    if(isAdmin()) $id('addSiteBtn').style.display='block';
+    $id('addSiteBtn').style.display='block';
     showScreen('scHome');
     loadSites().then(()=>{ renderHome(); });
     initDate();
@@ -887,7 +887,7 @@ async function renderHome(){
   empty.style.display='none';
 
   // 관리자만 현장추가 버튼 표시
-  if($id('addSiteBtn')) $id('addSiteBtn').style.display=isAdmin()?'block':'none';
+  if($id('addSiteBtn')) $id('addSiteBtn').style.display='block';
 
   let totalRpts=0, totalW=0;
   sites.forEach(s=>{
@@ -898,8 +898,8 @@ async function renderHome(){
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px">
         <div class="site-name">${s.name}</div>
         <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">
-          ${isAdmin()?`<button class="icon-btn" style="background:#f0f4ff;color:var(--navy)" onclick="event.stopPropagation();editSite('${s.id}')">✏️</button>
-          <button class="icon-btn" style="background:#fee2e2;color:#dc2626" onclick="event.stopPropagation();deleteSite('${s.id}')">🗑</button>`:''}
+          <button class="icon-btn" style="background:#f0f4ff;color:var(--navy)" onclick="event.stopPropagation();editSite('${s.id}')">✏️</button>
+          ${isAdmin()?`<button class="icon-btn" style="background:#fee2e2;color:#dc2626" onclick="event.stopPropagation();deleteSite('${s.id}')">🗑</button>`:''}
         </div>
       </div>
       <div class="site-sub">${s.work||''} ${s.supervisor?'· 감독관: '+s.supervisor:''}</div>
@@ -976,7 +976,6 @@ function closeSiteModal(e){
   if(!e||e.target===$id('ovSite')) $id('ovSite').classList.remove('on');
 }
 async function saveSite(){
-  if(!isAdmin()){toast('❗ 관리자만 현장을 추가/수정할 수 있습니다'); return;}
   const name=$id('sName').value.trim();
   if(!name){toast('❗ 현장명을 입력해주세요'); return;}
   const editId=$id('editSiteId').value;
