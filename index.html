@@ -813,7 +813,7 @@ function toast(msg){
   setTimeout(()=>t.classList.remove('on'), 2500);
 }
 function curSite(){ return sites.find(s=>s.id===curSiteId)||{}; }
-function isAdmin(){ return currentUser?.role==='admin'; }
+function isAdmin(){ return currentUser?.role==='admin'||currentUser?.role==='manager'; }
 
 // 동기화 뱃지
 function setSyncBadge(state){ // 'ok'|'ing'|'err'
@@ -865,20 +865,20 @@ function doLogout(){
   showScreen('scLogin');
   $id('loginId').value=''; $id('loginPw').value='';
 }
-function isMaster(){ return currentUser?.role==='master'; }
-function isAdminOrMaster(){ return currentUser?.role==='admin'||currentUser?.role==='master'; }
+function isSuperAdmin(){ return currentUser?.role==='admin'; }
+function isAdminOrManager(){ return currentUser?.role==='admin'||currentUser?.role==='manager'; }
 
 function afterLogin(){
-  if(isAdminOrMaster()){
-    const roleLabel = isMaster() ? '⭐ MASTER' : '👑 관리자';
+  if(isAdminOrManager()){
+    const roleLabel = isSuperAdmin() ? '⭐ ADMIN' : '👑 관리자';
     $id('admUserName').textContent=`${roleLabel}: ${currentUser.name}`;
     // MASTER만 계정관리 탭 표시
     const tabUsers=$id('tabUsers');
-    if(tabUsers) tabUsers.style.display=isMaster()?'flex':'none';
+    if(tabUsers) tabUsers.style.display=isSuperAdmin()?'flex':'none';
     showScreen('scAdmin');
     loadAdminDashboard();
     loadViewerSites();
-    if(isMaster()) loadAdminUsers();
+    if(isSuperAdmin()) loadAdminUsers();
   } else {
     $id('homeUserBadge').textContent='👤 '+currentUser.name;
     $id('addSiteBtn').style.display='block';
@@ -2048,8 +2048,8 @@ async function loadAdminUsers(){
     users.forEach(u=>{
       if(u.role==='master') return; // master 계정은 목록에서 숨김
       const assignedSites=allSites.filter(s=>(u.siteIds||[]).includes(s.id)).map(s=>s.name).join(', ')||'없음';
-      const roleLabel = u.role==='admin'?'관리자':'현장담당';
-      const roleClass = u.role==='admin'?'role-admin':'role-user';
+      const roleLabel = u.role==='admin'?'최고관리자':u.role==='manager'?'관리자':'현장담당';
+      const roleClass = u.role==='admin'?'role-admin':u.role==='manager'?'role-admin':'role-user';
       const div=document.createElement('div');
       div.className='user-row';
       div.innerHTML=`
@@ -2059,7 +2059,7 @@ async function loadAdminUsers(){
         </div>
         <span class="user-role ${roleClass}">${roleLabel}</span>
         <button onclick="openEditUserModal(${JSON.stringify(u).replace(/"/g,'&quot;')})" style="background:#f0f4ff;border:none;color:var(--navy);border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">✏️</button>
-        ${isMaster()?`<button onclick="deleteUser('${u.id}')" style="background:#fee2e2;border:none;color:#dc2626;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">🗑</button>`:''}`;
+        ${isSuperAdmin()?`<button onclick="deleteUser('${u.id}')" style="background:#fee2e2;border:none;color:#dc2626;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">🗑</button>`:''}`;
       list.appendChild(div);
     });
   }catch(e){ if(list) list.innerHTML=`<div style="color:#dc2626;font-size:12px">로드 실패: ${e.message}</div>`; }
@@ -2092,11 +2092,11 @@ async function showUserModal(u){
       `<div style="font-size:12px;color:var(--gray);margin-bottom:6px">아이디: <b>${u.username}</b></div>
       <input id="muPassword" class="login-inp" type="password" placeholder="비밀번호 변경 (비워두면 유지)">`}
       <input id="muName" class="login-inp" placeholder="이름" value="${u.name||''}">
-      ${isMaster()?`
+      ${isSuperAdmin()?`
       <div style="font-size:11px;font-weight:700;color:var(--navy);margin:8px 0 4px">역할</div>
       <select id="muRole" class="login-inp" style="margin-bottom:10px">
         <option value="user" ${(u.role||'user')==='user'?'selected':''}>현장담당 (USER)</option>
-        <option value="admin" ${u.role==='admin'?'selected':''}>관리자 (ADMIN)</option>
+        <option value="manager" ${u.role==='manager'?'selected':''}>관리자 (MANAGER)</option>
       </select>`:''}
       <div style="font-size:11px;font-weight:700;color:var(--navy);margin:8px 0 4px">담당 현장</div>
       <div id="muSites" style="max-height:160px;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px;padding:6px 10px">${siteChecks||'<div style="color:var(--gray);font-size:11px;padding:8px 0">등록된 현장이 없습니다</div>'}</div>
