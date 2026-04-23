@@ -16,53 +16,57 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Bebas+Neue&display=swap');
 
 :root {
-  --navy:#1a2744; --navy2:#243660; --orange:#f5851f; --orange2:#ff9a3c;
-  --bg:#f0f2f7; --white:#fff; --border:#d8dde8; --gray:#6b7694;
-  --shadow:0 4px 20px rgba(26,39,68,.12); --r:14px; --r2:8px;
+  --navy:#1c2b1c; --navy2:#2d4a2d; --orange:#3d8b3d; --orange2:#52a852;
+  --bg:#f5f7f5; --white:#fff; --border:#e0e8e0; --gray:#7a8f7a;
+  --shadow:0 1px 4px rgba(0,0,0,.07),0 2px 12px rgba(0,0,0,.05); --r:10px; --r2:6px;
+  --text:#1a1a1a; --text2:#4a4a4a; --text3:#888;
+  --green:#3d8b3d; --green-light:#e8f5e8; --green-mid:#c8e6c8;
+  --red:#dc2626; --red-light:#fef2f2;
+  --accent:#2e7d32;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh;overflow-x:hidden}
+body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 
 /* ── SCREEN SYSTEM ── */
 .screen{display:none}
 .screen.on{display:block}
 
 /* ── HEADER ── */
-.hdr{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,.25)}
+.hdr{background:#fff;color:var(--text);position:sticky;top:0;z-index:100;box-shadow:0 1px 0 var(--border);}
 .hdr-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
 .hdr-logo{display:flex;align-items:center;gap:10px}
-.hdr-icon{width:36px;height:36px;background:var(--orange);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-.hdr-title{font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:2px;line-height:1}
-.hdr-sub{font-size:10px;opacity:.6;letter-spacing:.5px}
+.hdr-icon{width:36px;height:36px;background:#fff;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;overflow:hidden}
+.hdr-title{font-size:15px;font-weight:700;letter-spacing:.3px;line-height:1;color:var(--text)}
+.hdr-sub{font-size:11px;color:var(--text3);letter-spacing:0}
 .hdr-right{display:flex;align-items:center;gap:8px}
 .hdr-date{text-align:right;font-size:10px;opacity:.65;line-height:1.6}
-.home-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.home-btn{background:var(--red-light);border:1px solid #fca5a5;color:var(--red);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
 
 /* ── TABS ── */
-.tabs{display:flex;background:rgba(255,255,255,.07);border-top:1px solid rgba(255,255,255,.1)}
-.tab{flex:1;padding:9px 4px;text-align:center;font-size:10px;font-weight:500;color:rgba(255,255,255,.5);cursor:pointer;border-bottom:2px solid transparent;transition:.2s;letter-spacing:.3px}
-.tab.on{color:var(--orange);border-bottom-color:var(--orange);background:rgba(245,133,31,.08)}
-.tab-ic{display:block;font-size:15px;margin-bottom:1px}
+.tabs{display:flex;background:#fff;border-top:1px solid var(--border)}
+.tab{flex:1;padding:10px 4px;text-align:center;font-size:11px;font-weight:500;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:.15s;letter-spacing:0}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent);background:transparent;font-weight:700}
+.tab-ic{display:block;font-size:14px;margin-bottom:2px}
 
 /* ── PAGE ── */
 .page{display:none;padding:14px;padding-bottom:32px}
 .page.on{display:block}
 
 /* ── CARD ── */
-.card{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
-.card-hdr{background:linear-gradient(90deg,var(--navy),var(--navy2));color:#fff;padding:11px 15px;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;letter-spacing:.3px}
-.card-body{padding:14px}
+.card{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;border:1px solid var(--border)}
+.card-hdr{background:var(--green-light);color:var(--accent);border-bottom:1px solid var(--green-mid);padding:10px 14px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700}
+.card-body{padding:12px 14px}
 
 /* ── FORM ── */
 .row{display:flex;gap:10px;margin-bottom:11px}
 .row:last-child{margin-bottom:0}
 .fg{flex:1;display:flex;flex-direction:column;gap:4px}
-label{font-size:11px;font-weight:700;color:var(--navy);letter-spacing:.4px;text-transform:uppercase}
+label{font-size:12px;font-weight:600;color:var(--text2);letter-spacing:0;display:block;margin-bottom:4px}
 input[type=text],input[type=number],input[type=date],select,textarea{
   width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--r2);
   font-size:13px;font-family:inherit;color:var(--navy);background:#f8f9fc;transition:.2s;
   -webkit-appearance:none;appearance:none}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--orange);background:#fff;box-shadow:0 0 0 3px rgba(245,133,31,.1)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green);background:#fff;box-shadow:0 0 0 2px rgba(61,139,61,.12)}
 textarea{resize:vertical;min-height:72px;line-height:1.6}
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231a2744' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
 
@@ -90,7 +94,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .wnum{width:24px;height:24px;background:var(--orange);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:7px}
 
 /* ── ADD BTN ── */
-.add-btn{width:100%;padding:9px;background:#fff;border:2px dashed var(--orange);border-radius:var(--r2);color:var(--orange);font-size:12px;font-weight:700;cursor:pointer;transition:.2s;font-family:inherit;letter-spacing:.3px;margin-top:8px}
+.add-btn{width:100%;padding:9px;background:#fff;border:1.5px dashed var(--green);border-radius:var(--r2);color:var(--green);font-size:13px;font-weight:600;cursor:pointer;transition:.15s;font-family:inherit;margin-top:8px}
 .add-btn:hover{background:#fff5eb}
 
 /* ── PROGRESS ── */
@@ -116,39 +120,39 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .pempty{text-align:center;padding:28px 0;color:var(--gray)}
 
 /* ── CUMUL CARD ── */
-.cumul-hero{background:linear-gradient(135deg,#0f172a,var(--navy));color:#fff;border-radius:var(--r);padding:16px;margin-bottom:14px}
+.cumul-hero{background:var(--accent);color:#fff;border-radius:var(--r);padding:16px;margin-bottom:14px}
 .ch-val{font-family:'Bebas Neue',cursive;font-size:44px;letter-spacing:2px;line-height:1}
 .ch-unit{font-size:14px;opacity:.7;margin-left:4px}
 .ch-label{font-size:10px;opacity:.6;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
 .mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .mini{background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:var(--shadow)}
 .mini-label{font-size:10px;color:var(--gray);margin-bottom:3px}
-.mini-val{font-size:22px;font-weight:900;color:var(--navy)}
+.mini-val{font-size:22px;font-weight:700;color:var(--text)}
 .mini-unit{font-size:10px;color:var(--gray)}
 
 /* ── SUMMARY ROW ── */
-.srow{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:12px}
+.srow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
 .srow:last-child{border-bottom:none}
 .slabel{color:var(--gray)}
-.sval{font-weight:700;color:var(--navy)}
+.sval{font-weight:600;color:var(--text)}
 
 /* ── ACTION BTNS ── */
 .act-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.act-btn{padding:13px 10px;border:none;border-radius:var(--r);font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:.2s;font-family:inherit;box-shadow:var(--shadow)}
+.act-btn{padding:14px 10px;border:none;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.15s;font-family:inherit;box-shadow:var(--shadow)}
 .act-btn:active{transform:scale(.96)}
 .act-ic{font-size:20px}
-.btn-xl{background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;grid-column:span 2;flex-direction:row;padding:15px;font-size:14px}
+.btn-xl{background:var(--accent);color:#fff;grid-column:span 2;flex-direction:row;padding:15px;font-size:14px}
 
 /* ── HISTORY ── */
 .hist-item{display:flex;align-items:center;gap:11px;padding:12px;background:#fff;border-radius:10px;box-shadow:var(--shadow);margin-bottom:8px;cursor:pointer;transition:.2s}
 .hist-item:active{transform:translateX(3px)}
-.hist-badge{background:var(--navy);color:#fff;border-radius:8px;padding:5px 9px;text-align:center;min-width:46px;flex-shrink:0}
-.hist-day{font-size:19px;font-weight:900;line-height:1}
+.hist-badge{background:var(--green-light);color:var(--accent);border:1px solid var(--green-mid);border-radius:8px;padding:5px 9px;text-align:center;min-width:46px;flex-shrink:0}
+.hist-day{font-size:18px;font-weight:700;line-height:1;color:var(--accent)}
 .hist-mon{font-size:9px;opacity:.65}
 .hist-info{flex:1}
-.hist-title{font-size:12px;font-weight:700;color:var(--navy)}
-.hist-sub{font-size:10px;color:var(--gray);margin-top:2px}
-.hist-pct{font-size:15px;font-weight:900;color:var(--orange);flex-shrink:0}
+.hist-title{font-size:13px;font-weight:600;color:var(--text)}
+.hist-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.hist-pct{font-size:15px;font-weight:700;color:var(--accent);flex-shrink:0}
 
 /* ── MODAL ── */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end}
@@ -159,16 +163,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .mtitle{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:14px}
 
 /* ── TOAST ── */
-.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(26,39,68,.95);color:#fff;padding:11px 20px;border-radius:30px;font-size:12px;font-weight:500;z-index:9999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:500;z-index:9999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.2)}
 .toast.on{transform:translateX(-50%) translateY(0)}
 
 /* ── HOME ── */
-.home-hdr{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:22px 16px 18px}
+.home-hdr{background:#fff;color:var(--text);padding:16px;border-bottom:1px solid var(--border)}
 .home-dash{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
 .dash-mini{background:#fff;border-radius:12px;padding:11px 8px;text-align:center;box-shadow:var(--shadow)}
 .dash-val{font-size:22px;font-weight:900;color:var(--navy)}
 .dash-lbl{font-size:9px;color:var(--gray);margin-top:2px}
-.site-card{background:#fff;border-radius:var(--r);padding:15px 15px 15px 19px;margin-bottom:10px;box-shadow:var(--shadow);position:relative;overflow:hidden;cursor:pointer}
+.site-card{background:#fff;border-radius:var(--r);padding:14px 14px 14px 18px;margin-bottom:8px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden;cursor:pointer}
 .site-accent{position:absolute;left:0;top:0;width:5px;height:100%;background:var(--orange);border-radius:4px 0 0 4px}
 .site-name{font-size:15px;font-weight:900;color:var(--navy);margin-bottom:2px}
 .site-sub{font-size:10px;color:var(--gray);margin-bottom:8px}
@@ -201,27 +205,28 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .dtbl .total-row td{background:linear-gradient(90deg,#f0f4ff,#e8f0fe);font-weight:700;color:var(--navy)}
 
 /* ── LOGIN SCREEN ── */
-.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:linear-gradient(145deg,var(--navy) 0%,#0f172a 100%)}
-.login-logo{width:72px;height:72px;background:var(--orange);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:38px;margin-bottom:16px;box-shadow:0 8px 30px rgba(245,133,31,.4)}
-.login-box{background:#fff;border-radius:20px;padding:24px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:#f0f7f0}
+.login-logo{width:64px;height:64px;background:#fff;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:38px;margin-bottom:12px;box-shadow:0 4px 16px rgba(74,158,74,.2)}
+.login-box{background:#fff;border-radius:14px;padding:28px;width:100%;max-width:340px;box-shadow:0 2px 16px rgba(0,0,0,.08);border:1px solid var(--border)}
 .login-title{font-size:20px;font-weight:900;color:var(--navy);margin-bottom:4px;text-align:center}
 .login-sub{font-size:11px;color:var(--gray);text-align:center;margin-bottom:20px}
-.login-inp{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;color:var(--navy);background:#f8f9fc;margin-bottom:10px;-webkit-appearance:none}
-.login-inp:focus{outline:none;border-color:var(--orange);background:#fff;box-shadow:0 0 0 3px rgba(245,133,31,.1)}
-.login-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--orange),var(--orange2));color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;letter-spacing:.3px}
+.login-inp{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);background:#fff;margin-bottom:10px;-webkit-appearance:none;box-sizing:border-box}
+.login-inp:focus{outline:none;border-color:#4CAF50;background:#fff;box-shadow:0 0 0 3px rgba(76,175,80,.12)}
+.login-btn{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;}
 .login-err{background:#fee2e2;color:#dc2626;border-radius:8px;padding:9px 12px;font-size:12px;margin-bottom:10px;display:none;text-align:center}
+.login-label{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.5px;margin-bottom:4px;display:block}
 
 /* ── ADMIN DASHBOARD SCREEN ── */
-.adm-site-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow);cursor:pointer;border-left:5px solid var(--orange)}
-.adm-site-name{font-size:15px;font-weight:900;color:var(--navy);margin-bottom:3px}
-.adm-site-stats{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--gray);margin-bottom:8px}
-.adm-rpt-row{display:flex;align-items:center;gap:8px;padding:8px;background:#f8f9fc;border-radius:8px;margin-bottom:6px;cursor:pointer}
-.adm-rpt-date{background:var(--navy);color:#fff;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;white-space:nowrap}
-.adm-rpt-info{flex:1;font-size:11px;color:var(--navy)}
-.adm-rpt-pct{font-size:13px;font-weight:900;color:var(--orange);flex-shrink:0}
+.adm-site-card{background:#fff;border-radius:10px;padding:14px;margin-bottom:8px;box-shadow:var(--shadow);border:1px solid var(--border);border-left:3px solid var(--accent)}
+.adm-site-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
+.adm-site-stats{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text3);margin-bottom:8px}
+.adm-rpt-row{display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--bg);border-radius:8px;margin-bottom:4px;cursor:pointer;border:1px solid var(--border)}
+.adm-rpt-date{background:var(--green-light);color:var(--accent);border-radius:5px;padding:3px 8px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid var(--green-mid)}
+.adm-rpt-info{flex:1;font-size:12px;color:var(--text)}
+.adm-rpt-pct{font-size:13px;font-weight:700;color:var(--accent);flex-shrink:0}
 
 /* ── USER MGMT ── */
-.user-row{display:flex;align-items:center;gap:8px;padding:10px;background:#f8f9fc;border-radius:8px;margin-bottom:6px}
+.user-row{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fff;border-radius:8px;margin-bottom:6px;border:1px solid var(--border)}
 .user-name{flex:1;font-size:13px;font-weight:700;color:var(--navy)}
 .user-role{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:700}
 .role-admin{background:#fee2e2;color:#dc2626}
@@ -239,14 +244,15 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <!-- ============================= LOGIN SCREEN ============================= -->
 <div class="screen on" id="scLogin">
   <div class="login-wrap">
-    <div class="login-logo">🏗</div>
-    <div style="font-family:'Bebas Neue',cursive;font-size:26px;letter-spacing:3px;color:#fff;margin-bottom:4px">공사일보</div>
-    <div style="font-size:11px;color:rgba(255,255,255,.45);letter-spacing:1px;margin-bottom:24px">DAILY CONSTRUCTION REPORT</div>
+
+    <div style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:2px;letter-spacing:0;font-size:22px;font-weight:700;letter-spacing:2px">공사일보</div>
+    <div style="font-size:10px;color:var(--text3);letter-spacing:2px;margin-bottom:28px;font-size:11px">DAILY CONSTRUCTION REPORT</div>
     <div class="login-box">
-      <div class="login-title">로그인</div>
-      <div class="login-sub">현장 담당자 계정으로 접속하세요</div>
+      
       <div class="login-err" id="loginErr"></div>
+      <label class="login-label">ID</label>
       <input class="login-inp" type="text" id="loginId" placeholder="아이디" autocomplete="username" autocapitalize="none">
+      <label class="login-label">PASSWORD</label>
       <input class="login-inp" type="password" id="loginPw" placeholder="비밀번호" autocomplete="current-password"
         onkeydown="if(event.key==='Enter')doLogin()">
       <button class="login-btn" id="loginBtn" onclick="doLogin()">로그인</button>
@@ -254,7 +260,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <span style="font-size:10px;color:var(--gray);cursor:pointer;text-decoration:underline" onclick="openChangePwModal()">🔑 비밀번호 변경</span>
       </div>
     </div>
-    <div style="margin-top:20px;font-size:9px;color:rgba(255,255,255,.25);letter-spacing:.5px">POWERED BY CLOUDFLARE</div>
+    <div style="margin-top:20px;font-size:9px;color:rgba(30,58,30,.3);letter-spacing:.5px">POWERED BY CLOUDFLARE</div>
   </div>
 </div>
 
@@ -263,18 +269,18 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="hdr">
     <div class="hdr-top">
       <div class="hdr-logo">
-        <div class="hdr-icon">🏗</div>
+        
         <div>
-          <div class="hdr-title">공사일보</div>
-          <div class="hdr-sub" id="admUserName">관리자</div>
+          <div class="hdr-title" style="font-family:'Noto Sans KR',sans-serif;font-size:14px;letter-spacing:1px">공사일보</div>
+          <div class="hdr-sub" id="admUserName" style="color:var(--accent);font-weight:600">관리자</div>
         </div>
       </div>
       <div class="hdr-right">
-        <button class="home-btn" onclick="doLogout()" style="background:rgba(220,38,38,.3);border-color:rgba(220,38,38,.5)">로그아웃</button>
+        <button class="home-btn" onclick="doLogout()" style="background:#fee2e2;border-color:#fca5a5;color:#dc2626">로그아웃</button>
       </div>
     </div>
     <nav class="tabs" id="admTabs">
-      <div class="tab on" onclick="admTab('dashboard',this)"><span class="tab-ic">🏗</span>현장현황</div>
+      <div class="tab on" onclick="admTab('dashboard',this)"><span class="tab-ic">🏢</span>현장현황</div>
       <div class="tab" onclick="admTab('viewer',this)"><span class="tab-ic">📋</span>일보조회</div>
       <div class="tab" id="tabUsers" onclick="admTab('users',this)"><span class="tab-ic">👤</span>계정관리</div>
     </nav>
@@ -345,18 +351,18 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="home-hdr">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
       <div style="display:flex;align-items:center;gap:10px">
-        <div class="hdr-icon">🏗</div>
+        
         <div>
           <div style="font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:2px">공사일보</div>
           <div style="font-size:9px;opacity:.6;letter-spacing:1px">DAILY CONSTRUCTION REPORT</div>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-        <div id="homeUserBadge" style="font-size:11px;background:rgba(255,255,255,.15);border-radius:10px;padding:3px 9px;color:#fff"></div>
-        <button onclick="doLogout()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:7px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">로그아웃</button>
+        <div id="homeUserBadge" style="font-size:11px;background:var(--green-light);border-radius:8px;padding:3px 9px;color:var(--accent);font-weight:600"></div>
+        <button onclick="doLogout()" style="background:var(--red-light);border:1px solid #fca5a5;color:var(--red);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">로그아웃</button>
       </div>
     </div>
-    <div id="homeDateTxt" style="font-size:11px;opacity:.65;margin-top:4px"></div>
+    <div id="homeDateTxt" style="font-size:12px;color:var(--text3);margin-top:4px"></div>
   </div>
 
   <div style="padding:14px">
@@ -377,7 +383,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
     <div id="siteList"></div>
     <div id="siteEmpty" style="text-align:center;padding:40px 0;color:var(--gray);display:none">
-      <div style="font-size:44px;margin-bottom:10px">🏗</div>
+      <div style="margin-bottom:10px"><svg width="56" height="56" viewBox="0 0 56 56" fill="none"><text x="6" y="44" font-family="Georgia,serif" font-style="italic" font-size="48" font-weight="700" fill="#2a5c2a">i</text></svg></div>
       <div style="font-size:14px;font-weight:700;color:var(--navy)">등록된 현장이 없습니다</div>
       <div style="font-size:11px;margin-top:5px">위 버튼으로 현장을 추가하세요</div>
     </div>
@@ -391,9 +397,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <header class="hdr">
     <div class="hdr-top">
       <div class="hdr-logo">
-        <div class="hdr-icon">🏗</div>
+        
         <div>
-          <div class="hdr-title">공사일보</div>
+          <div class="hdr-title" style="font-family:'Noto Sans KR',sans-serif;font-size:14px;letter-spacing:1px">공사일보</div>
           <div class="hdr-sub" id="hdrSiteName">현장명</div>
         </div>
       </div>
@@ -874,7 +880,20 @@ function afterLogin(){
     $id('admUserName').textContent=`${roleLabel}: ${currentUser.name}`;
     // MASTER만 계정관리 탭 표시
     const tabUsers=$id('tabUsers');
-    if(tabUsers) tabUsers.style.display=isSuperAdmin()?'flex':'none';
+    if(tabUsers){
+      if(isSuperAdmin()){
+        tabUsers.style.visibility='visible';
+        tabUsers.style.width='';
+        tabUsers.style.padding='';
+        tabUsers.style.overflow='';
+        tabUsers.style.flex='1';
+      } else {
+        tabUsers.style.visibility='hidden';
+        tabUsers.style.width='0';
+        tabUsers.style.padding='0';
+        tabUsers.style.overflow='hidden';
+      }
+    }
     showScreen('scAdmin');
     loadAdminDashboard();
     loadViewerSites();
