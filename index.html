@@ -1002,8 +1002,8 @@ function updateProjMeta(s){
 function openSiteModal(){
   $id('siteModalTitle').textContent='🏗 현장 추가';
   $id('editSiteId').value='';
-  ['sName','sWork','sClient','sManager','sStart','sEnd']
-    .forEach(id=>{ if($id(id)) $id(id).value=''; });
+  const ids=['sName','sWork','sClient','sManager','sStart','sEnd'];
+  ids.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   $id('ovSite').classList.add('on');
 }
 function editSite(id){
