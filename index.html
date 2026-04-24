@@ -1002,8 +1002,8 @@ function updateProjMeta(s){
 function openSiteModal(){
   $id('siteModalTitle').textContent='🏗 현장 추가';
   $id('editSiteId').value='';
-  ['sName','sWork','sClient','sSupervisor','sContractor','sManager','sStart','sEnd']
-    .forEach(id=>$id(id).value='');
+  ['sName','sWork','sClient','sManager','sStart','sEnd']
+    .forEach(id=>{ if($id(id)) $id(id).value=''; });
   $id('ovSite').classList.add('on');
 }
 function editSite(id){
@@ -1011,8 +1011,7 @@ function editSite(id){
   $id('siteModalTitle').textContent='✏️ 현장 수정';
   $id('editSiteId').value=s.id;
   $id('sName').value=s.name||''; $id('sWork').value=s.work||'';
-  $id('sClient').value=s.client||''; $id('sSupervisor').value=s.supervisor||'';
-  $id('sContractor').value=s.contractor||''; $id('sManager').value=s.manager||'';
+  $id('sClient').value=s.client||''; $id('sManager').value=s.manager||'';
   $id('sStart').value=s.startDate||''; $id('sEnd').value=s.endDate||'';
   $id('ovSite').classList.add('on');
 }
@@ -1115,7 +1114,7 @@ function resetForm(s){
       if(w.job){ const newCumul=(w.cumul||0)+(w.sub||0); addWorker(w.job, newCumul); }
     });
   } else {
-    ['철근공','형틀목공','콘크리트공','일반작업'].forEach(n=>addWorker(n, 0));
+    ['관리자','판넬','덕트','배관','전기'].forEach(n=>addWorker(n, 0));
   }
   addEquip(); addMat(); addWork();
   $id('rNote').value='';
