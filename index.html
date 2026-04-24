@@ -1061,8 +1061,7 @@ async function deleteSite(id){
 function openProjModal(){
   const s=curSite();
   $id('pName').value=s.name||''; $id('pWork').value=s.work||'';
-  $id('pClient').value=s.client||''; $id('pSupervisor').value=s.supervisor||'';
-  $id('pContractor').value=s.contractor||''; $id('pManager').value=s.manager||'';
+  $id('pClient').value=s.client||''; $id('pManager').value=s.manager||'';
   $id('pStart').value=s.startDate||''; $id('pEnd').value=s.endDate||'';
   $id('ovProj').classList.add('on');
 }
