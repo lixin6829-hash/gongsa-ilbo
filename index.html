@@ -432,11 +432,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="card-body">
         <div class="row">
           <div class="fg"><label>작성일</label><input type="date" id="rDate"></div>
-          <div class="fg"><label>일보 No.</label><input type="text" id="rNo" placeholder="001"></div>
-        </div>
-        <div class="row">
           <div class="fg"><label>작성자</label><input type="text" id="rAuthor" placeholder="성명"></div>
-          <div class="fg"><label>직위</label><input type="text" id="rTitle" placeholder="직위"></div>
         </div>
       </div>
     </div>
@@ -481,7 +477,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
               <th style="background:#1e3830;min-width:28px">신호</th>
               <th style="background:#1e3830;min-width:28px">유도</th>
               <th style="background:#374151;min-width:32px">누적</th>
-              <th style="background:#b84a10;min-width:28px">소계</th>
+              <th style="background:#b84a10;min-width:28px">금일</th>
+              <th style="background:#374151;min-width:32px">합계</th>
               <th style="background:#065f46;min-width:36px">공정율</th>
               <th style="width:22px"></th>
             </tr>
@@ -494,6 +491,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
               <td id="f2">0</td><td id="f3">0</td><td id="f4">0</td>
               <td id="fCumul" style="color:var(--navy)">0</td>
               <td id="fAll" style="color:var(--orange)">0</td>
+              <td id="fTotal" style="color:#374151;font-weight:700">0</td>
               <td id="fPct" style="color:#065f46">-</td>
               <td></td>
             </tr>
@@ -690,7 +688,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="card-body">
         <div class="act-grid">
           <button class="act-btn" style="background:linear-gradient(135deg,#1a56db,#1d4ed8);color:#fff" onclick="exportWord()">
-            <span class="act-ic">📄</span>Word 다운로드
+            <span class="act-ic">📊</span>Excel 다운로드
           </button>
           <button class="act-btn" style="background:linear-gradient(135deg,#1a56db,#1d4ed8);color:#fff" onclick="sendEmail()">
             <span class="act-ic">✉️</span>이메일 전송
@@ -698,38 +696,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <button class="act-btn" style="background:linear-gradient(135deg,#f7e01d,#f5c800);color:#3a2a00" onclick="shareKakao()">
             <span class="act-ic">💬</span>카카오톡 공유
           </button>
-          <button class="act-btn" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff" onclick="shareGeneral()">
-            <span class="act-ic">🔗</span>다른 앱 공유
-          </button>
-          <!-- 네이버 웍스 버튼 (전체 너비) -->
-          <button class="act-btn" style="background:linear-gradient(135deg,#03c75a,#02a84a);color:#fff;grid-column:span 2;flex-direction:row;padding:14px;font-size:13px;gap:10px" onclick="shareNaverWorks()">
-            <span style="font-size:22px">🟢</span>
-            <div style="text-align:left">
-              <div style="font-weight:700">네이버 웍스 공유</div>
-              <div style="font-size:10px;opacity:.85;margin-top:1px">엑셀 저장 후 웍스 게시판에 첨부</div>
-            </div>
+          <button class="act-btn" style="background:linear-gradient(135deg,#03c75a,#02a84a);color:#fff" onclick="shareNaverWorks()">
+            <span class="act-ic">🟢</span>네이버 웍스
           </button>
           <button class="act-btn btn-xl" onclick="saveReport()">
             <span class="act-ic">💾</span> 일보 저장
           </button>
         </div>
-      </div>
-    </div>
-
-    <!-- 미리보기 -->
-    <div class="card">
-      <div class="card-hdr"><span>👁</span> 오늘 일보 미리보기</div>
-      <div class="card-body" id="previewBody">
-        <div style="color:var(--gray);font-size:12px;text-align:center;padding:18px">작성 탭에서 내용을 입력하면 미리보기가 표시됩니다</div>
-      </div>
-    </div>
-
-    <!-- 전송 설정 -->
-    <div class="card">
-      <div class="card-hdr"><span>⚙️</span> 전송 설정</div>
-      <div class="card-body">
-        <div class="fg" style="margin-bottom:10px"><label>이메일 수신자</label><input type="text" id="cfgEmail" placeholder="example@email.com"></div>
-        <div class="fg"><label>이메일 참조 (CC)</label><input type="text" id="cfgCC" placeholder="참조자 이메일 (선택)"></div>
       </div>
     </div>
   </div>
@@ -745,13 +718,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="mtitle" id="siteModalTitle">🏗 현장 추가</div>
     <input type="hidden" id="editSiteId">
     <div class="fg" style="margin-bottom:10px"><label>현장명 *</label><input type="text" id="sName" placeholder="예) ○○ 아파트 신축공사"></div>
-    <div class="fg" style="margin-bottom:10px"><label>공사명</label><input type="text" id="sWork" placeholder="예) 철근콘크리트 공사"></div>
+    <div class="fg" style="margin-bottom:10px"><label>계약번호</label><input type="text" id="sWork" placeholder="예) S26XXX"></div>
     <div class="row">
       <div class="fg"><label>발주처</label><input type="text" id="sClient" placeholder="발주처명"></div>
-      <div class="fg"><label>감독관</label><input type="text" id="sSupervisor" placeholder="성명"></div>
-    </div>
-    <div class="row">
-      <div class="fg"><label>시공사</label><input type="text" id="sContractor" placeholder="시공사명"></div>
       <div class="fg"><label>현장소장</label><input type="text" id="sManager" placeholder="성명"></div>
     </div>
     <div class="row">
@@ -771,13 +740,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="mhandle"></div>
     <div class="mtitle">🏗 현장 정보 수정</div>
     <div class="fg" style="margin-bottom:10px"><label>현장명</label><input type="text" id="pName"></div>
-    <div class="fg" style="margin-bottom:10px"><label>공사명</label><input type="text" id="pWork"></div>
+    <div class="fg" style="margin-bottom:10px"><label>계약번호</label><input type="text" id="pWork"></div>
     <div class="row">
       <div class="fg"><label>발주처</label><input type="text" id="pClient"></div>
-      <div class="fg"><label>감독관</label><input type="text" id="pSupervisor"></div>
-    </div>
-    <div class="row">
-      <div class="fg"><label>시공사</label><input type="text" id="pContractor"></div>
       <div class="fg"><label>현장소장</label><input type="text" id="pManager"></div>
     </div>
     <div class="row">
@@ -807,6 +772,8 @@ const API = 'https://royal-union-e7e0.lixin-594.workers.dev/api';
 let sites = [];
 let curSiteId = null;
 let reports   = [];
+let currentReports = [];
+let _editingReportId = null;
 let wMain = '';
 let photos = []; // {dataUrl, caption}
 let currentUser = null; // {id, name, role, siteIds}
@@ -979,7 +946,7 @@ async function renderHome(){
           <button class="icon-btn" style="background:#fee2e2;color:#dc2626" onclick="event.stopPropagation();deleteSite('${s.id}')">🗑</button>
         </div>
       </div>
-      <div class="site-sub">${s.work||''} ${s.supervisor?'· 감독관: '+s.supervisor:''}</div>
+      <div class="site-sub">${s.work?'계약번호: '+s.work:''}</div>
       <div class="site-stats" id="siteStats_${s.id}">
         <span>📅 로딩 중...</span>
       </div>
@@ -1028,7 +995,7 @@ async function enterSite(siteId){
 
 function updateProjMeta(s){
   $id('projName').textContent=s.name||'현장명';
-  $id('projDetail').textContent=[s.work,s.supervisor?'감독관: '+s.supervisor:''].filter(Boolean).join(' · ');
+  $id('projDetail').textContent=s.work?'계약번호: '+s.work:'';
 }
 
 // ── SITE MODAL ─────────────────────────────────────────────────────────
@@ -1057,7 +1024,7 @@ async function saveSite(){
   if(!name){toast('❗ 현장명을 입력해주세요'); return;}
   const editId=$id('editSiteId').value;
   const data={name, work:$id('sWork').value, client:$id('sClient').value,
-    supervisor:$id('sSupervisor').value, contractor:$id('sContractor').value,
+    supervisor:'', contractor:'',
     manager:$id('sManager').value, startDate:$id('sStart').value, endDate:$id('sEnd').value};
   try{
     setSyncBadge('ing');
@@ -1103,8 +1070,8 @@ function closeProjModal(e){
 async function saveProjEdit(){
   if(!curSiteId) return;
   const updated={name:$id('pName').value, work:$id('pWork').value,
-    client:$id('pClient').value, supervisor:$id('pSupervisor').value,
-    contractor:$id('pContractor').value, manager:$id('pManager').value,
+    client:$id('pClient').value, supervisor:'',
+    contractor:'', manager:$id('pManager').value,
     startDate:$id('pStart').value, endDate:$id('pEnd').value};
   try{
     setSyncBadge('ing');
@@ -1134,8 +1101,8 @@ function goTab(id, tabEl){
 function resetForm(s){
   const n=new Date();
   $id('rDate').value=n.toISOString().split('T')[0];
-  $id('rNo').value=String(reports.length+1).padStart(3,'0');
-  $id('rAuthor').value=currentUser?.name||''; $id('rTitle').value='';
+  
+  $id('rAuthor').value=currentUser?.name||''; 
   wMain='';
   document.querySelectorAll('.w-btn').forEach(b=>b.classList.remove('on'));
   $id('tMin').value=''; $id('tMax').value='';
@@ -1166,9 +1133,13 @@ function selW(btn){
 function addWorker(name='', initCumul=0){
   const tbody=$id('wBody');
   const tr=document.createElement('tr');
-  const ni=(ph)=>`<td><input type="number" value="0" min="0" placeholder="${ph}" style="width:100%;padding:3px 1px;text-align:center;border:1px solid var(--border);border-radius:3px;font-size:11px;background:#fff;font-family:inherit" oninput="calcW()"></td>`;
+  const ni=(ph)=>`<td><div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:#fff">
+    <button type="button" onclick="stepNum(this,-1)" style="padding:2px 5px;background:#f5f5f5;border:none;border-right:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--text2);flex-shrink:0;line-height:1">−</button>
+    <input type="number" value="0" min="0" placeholder="0" style="width:28px;padding:3px 0;text-align:center;border:none;font-size:12px;font-family:inherit;background:#fff;-moz-appearance:textfield" oninput="calcW()">
+    <button type="button" onclick="stepNum(this,1)" style="padding:2px 5px;background:#f5f5f5;border:none;border-left:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--text2);flex-shrink:0;line-height:1">+</button>
+  </div></td>`;
   tr.innerHTML=`
-    <td style="min-width:58px"><input type="text" value="${name}" placeholder="직종" style="width:100%;padding:4px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:#fff;font-family:inherit"></td>
+    <td style="min-width:58px"><input type="text" value="${name}" placeholder="직종" style="width:100%;padding:4px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:#fff;font-family:inherit" onchange="if(!this.value.trim()){this.closest('tr').remove();calcW();}"></td>
     ${ni('관리자')}${ni('근로자')}${ni('화기')}${ni('신호')}${ni('유도')}
     <td><input type="number" value="${initCumul}" min="0" placeholder="누적" style="width:100%;padding:3px 1px;text-align:center;border:1.5px solid #374151;border-radius:3px;font-size:11px;background:#f4f5f7;font-family:inherit;font-weight:700;color:#374151" oninput="calcW()"></td>
     <td style="font-weight:700;color:var(--orange);text-align:center;font-size:12px;white-space:nowrap" class="w-sub">0</td>
@@ -1177,6 +1148,13 @@ function addWorker(name='', initCumul=0){
   tbody.appendChild(tr); calcW();
 }
 
+function stepNum(btn, delta){
+  const inp = btn.parentElement.querySelector('input');
+  if(!inp) return;
+  const v = parseInt(inp.value)||0;
+  inp.value = Math.max(0, v+delta);
+  calcW();
+}
 function calcW(){
   const totals=Array(5).fill(0);
   let totalSub=0, totalCumul=0;
@@ -1188,6 +1166,8 @@ function calcW(){
     const cumul=parseInt(inp[5]?.value)||0;
     const subCell=tr.querySelector('.w-sub');
     if(subCell) subCell.textContent=sub;
+    const totalCell=tr.querySelector('.w-total');
+    if(totalCell) totalCell.textContent=sub+cumul;
     totalSub+=sub; totalCumul+=cumul;
     const pctInp=tr.querySelector('.w-pct-inp');
     if(pctInp&&pctInp.value!==''){
@@ -1198,6 +1178,8 @@ function calcW(){
   totals.forEach((v,i)=>{ const el=$id('f'+i); if(el) el.textContent=v; });
   if($id('fCumul')) $id('fCumul').textContent=totalCumul;
   if($id('fAll')) $id('fAll').textContent=totalSub;
+  if($id('fTotal')) $id('fTotal').textContent=totalSub+totalCumul;
+  if($id('fTotal')) $id('fTotal').textContent=totalSub+totalCumul;
   const avgPct=pctCount>0?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctCount):null;
   if($id('prgBadge')){
     $id('prgBadge').textContent=avgPct!==null?avgPct+'%':'-';
@@ -1336,8 +1318,8 @@ function collectReport(){
   const pctVals=workers.map(w=>w.pct).filter(p=>p!==null);
   const totalPct=pctVals.length>0?Math.round(pctVals.reduce((a,b)=>a+b,0)/pctVals.length):null;
   return{
-    id:Date.now(), date:$id('rDate').value, no:$id('rNo').value,
-    author:$id('rAuthor').value, authorTitle:$id('rTitle').value,
+    id:Date.now(), date:$id('rDate').value, no:String((currentReports.length||0)+1).padStart(3,'0'),
+    author:$id('rAuthor').value, authorTitle:'',
     weather:wMain, tempMin:$id('tMin').value, tempMax:$id('tMax').value,
     workers, equips, materials, works,
     totalSub, totalCumul, totalPct,
@@ -1352,20 +1334,21 @@ function collectReport(){
 async function saveReport(){
   if(!curSiteId){toast('❗ 현장을 먼저 선택해주세요'); return;}
   const r=collectReport();
+  // 수정 모드면 기존 id 유지
+  if(_editingReportId) r.id=_editingReportId;
   setSyncBadge('ing');
   try{
-    // 1. 일보 텍스트 저장
     await api('POST','/reports/'+curSiteId, r);
-    // 2. 사진 저장 (있을 때만)
     if(photos.length){
       await api('POST','/reports/'+curSiteId+'/img/'+r.id,
         photos.map(p=>({dataUrl:p.dataUrl, caption:p.caption})));
     }
-    // 3. 로컬 상태 갱신
-    const i=reports.findIndex(x=>x.date===r.date&&x.no===r.no);
+    const i=reports.findIndex(x=>x.id===r.id||( x.date===r.date&&x.no===r.no));
     if(i>=0) reports[i]=r; else reports.unshift(r);
+    currentReports=[...reports];
+    _editingReportId=null;
     setSyncBadge('ok');
-    toast('💾 일보가 저장되었습니다 (클라우드 동기화 완료)');
+    toast(_editingReportId?'✅ 수정 완료':'💾 저장 완료');
     refreshHistory(); refreshCumul();
   }catch(e){
     setSyncBadge('err');
@@ -1383,6 +1366,7 @@ function refreshHistory(){
     return;
   }
   empty.style.display='none';
+  currentReports=[...reports];
   if(ctrl){ ctrl.style.display='flex'; $id('histCnt').textContent=reports.length; }
   reports.forEach(r=>{
     const d=new Date(r.date); const mon=(d.getMonth()+1)+'월'; const day=d.getDate();
@@ -1394,7 +1378,7 @@ function refreshHistory(){
     div.innerHTML=`
       <div class="hist-badge"><div class="hist-day">${day}</div><div class="hist-mon">${mon}</div></div>
       <div class="hist-info">
-        <div class="hist-title">No.${r.no||'-'} · ${r.author||'작성자 미입력'}</div>
+        <div class="hist-title">${r.author||'작성자 미입력'}</div>
         <div class="hist-sub">👷 ${wt}명 · 📷 ${r.photoCount||0}장 · ${r.weather||'-'}</div>
       </div>
       <div class="hist-pct">${pct}%</div>
@@ -1415,7 +1399,7 @@ function openHistDetail(r){
   const mRows=(r.materials||[]).map(m=>`<div class="srow"><span class="slabel">${m.name} ${m.spec||''}</span><span class="sval">${m.qty} ${m.unit||''}</span></div>`).join('');
   $id('histModalContent').innerHTML=`
     <div class="mhandle"></div>
-    <div class="mtitle">📋 ${r.date} 일보 (No.${r.no||'-'})</div>
+    <div class="mtitle">📋 ${r.date} 일보</div>
     <div class="srow"><span class="slabel">날씨</span><span class="sval">${r.weather||'-'} / ${r.tempMin||'-'}°C ~ ${r.tempMax||'-'}°C</span></div>
     <div class="srow"><span class="slabel">총 투입인원</span><span class="sval" style="color:var(--orange)">${wt}명</span></div>
     <div class="srow"><span class="slabel">전체 공정율</span><span class="sval" style="color:#065f46;font-weight:900;font-size:15px">${pct}%</span></div>
@@ -1427,12 +1411,64 @@ function openHistDetail(r){
     </span></div>
     ${r.specialNote?`<div style="font-size:11px;color:var(--gray);margin-top:8px;padding:8px;background:#f8f9fc;border-radius:6px">${r.specialNote}</div>`:''}
     <div style="display:flex;gap:8px;margin-top:12px">
-      <button onclick="exportWordById(${r.id})" style="flex:1;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📄 Word</button>
-      <button onclick="deleteReport(${r.id})" style="padding:11px 14px;background:#fee2e2;color:#dc2626;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 삭제</button>
+      <button onclick="exportWordById(${r.id})" style="flex:1;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📊 Excel</button>
+      <button onclick="editReportFromHist(${r.id})" style="flex:1;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ 수정</button>
+      <button onclick="deleteReport(${r.id})" style="padding:11px 14px;background:#fee2e2;color:#dc2626;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑</button>
     </div>`;
   $id('ovHist').classList.add('on');
 }
 function closeHistModal(e){ if(!e||e.target===$id('ovHist')) $id('ovHist').classList.remove('on'); }
+
+async function editReportFromHist(reportId){
+  const r = currentReports.find(x=>x.id===reportId);
+  if(!r){ toast('일보를 찾을 수 없습니다'); return; }
+  // 이력 모달 닫기
+  $id('ovHist').classList.remove('on');
+  // 작성 탭으로 이동
+  goTab('pg-write', document.querySelector('[onclick*="pg-write"]'));
+  await new Promise(res=>setTimeout(res,100));
+  // 기존 데이터 채우기
+  $id('rDate').value = r.date||'';
+  $id('rAuthor').value = r.author||'';
+  // 날씨
+  document.querySelectorAll('.w-btn').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.w-btn').forEach(b=>{
+    if(b.textContent.includes(r.weather||'')) b.classList.add('on');
+  });
+  if($id('tMin')) $id('tMin').value = r.tempMin||'';
+  if($id('tMax')) $id('tMax').value = r.tempMax||'';
+  // 작업인원 초기화 후 채우기
+  $id('wBody').innerHTML='';
+  (r.workers||[]).filter(w=>w.job).forEach(w=>{
+    addWorker(w.job, w.cumul||0);
+    const rows=$id('wBody').querySelectorAll('tr');
+    const last=rows[rows.length-1];
+    if(!last) return;
+    const numInps=last.querySelectorAll('input[type=number]');
+    if(numInps[0]) numInps[0].value=w.mgr||0;
+    if(numInps[1]) numInps[1].value=w.emp||0;
+    if(numInps[2]) numInps[2].value=(w.hwa||[0,0,0])[0]||0;
+    if(numInps[3]) numInps[3].value=(w.hwa||[0,0,0])[1]||0;
+    if(numInps[4]) numInps[4].value=(w.hwa||[0,0,0])[2]||0;
+    const pctInp=last.querySelector('.w-pct-inp');
+    if(pctInp&&w.pct!=null) pctInp.value=w.pct;
+  });
+  calcW();
+  // 장비
+  const eBody=$id('eBody'); if(eBody) eBody.innerHTML='';
+  (r.equips||[]).filter(e=>e.name).forEach(e=>addEquip(e.name,e.qty,e.desc));
+  // 자재
+  const mBody=$id('mBody'); if(mBody) mBody.innerHTML='';
+  (r.materials||[]).filter(m=>m.name).forEach(m=>addMat(m.name,m.spec,m.qty,m.unit));
+  // 작업내용
+  const wkBody=$id('wkBody'); if(wkBody) wkBody.innerHTML='';
+  (r.works||[]).forEach(w=>addWork(w));
+  // 특이사항
+  if($id('rNote')) $id('rNote').value=r.specialNote||'';
+  // 수정 모드 표시
+  _editingReportId = reportId;
+  toast('✏️ 수정 모드 - 내용 수정 후 저장하세요');
+}
 
 async function viewHistPhotos(reportId){
   toast('사진 로딩 중...');
@@ -1525,7 +1561,7 @@ function refreshCumul(){
 
   const wkeys=Object.keys(workerMap);
   $id('cWorkerTbl').innerHTML=!wkeys.length?'<div style="color:var(--gray);font-size:11px;text-align:center;padding:8px">없음</div>':`
-    <table class="dtbl"><thead><tr><th>직종</th><th>당일소계</th><th>누계소계</th><th>공정율</th></tr></thead><tbody>
+    <table class="dtbl"><thead><tr><th>직종</th><th>금일</th><th>합계</th><th>누적</th><th>공정율</th></tr></thead><tbody>
     ${wkeys.map(j=>{
       const w=workerMap[j];
       const todayW=lastReport?(lastReport.workers||[]).find(x=>x.job===j):null;
