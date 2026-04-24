@@ -764,7 +764,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- ============================= SCRIPT ============================= -->
+<!-- ============================= SCRIPT v20260424070641 ============================= -->
 <script>
 // ══════════════════════════════════════════════════════════════════════
 // ⚙️  설정: Worker 배포 후 이 URL을 변경하세요
@@ -1135,28 +1135,18 @@ function selW(btn){
 function addWorker(name='', initCumul=0){
   const tbody=$id('wBody');
   const tr=document.createElement('tr');
-  const ni=(ph)=>`<td><div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:#fff">
-    <button type="button" onclick="stepNum(this,-1)" style="padding:2px 5px;background:#f5f5f5;border:none;border-right:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--text2);flex-shrink:0;line-height:1">−</button>
-    <input type="number" value="0" min="0" placeholder="0" style="width:28px;padding:3px 0;text-align:center;border:none;font-size:12px;font-family:inherit;background:#fff;-moz-appearance:textfield" oninput="calcW()">
-    <button type="button" onclick="stepNum(this,1)" style="padding:2px 5px;background:#f5f5f5;border:none;border-left:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--text2);flex-shrink:0;line-height:1">+</button>
-  </div></td>`;
+  const ni=()=>`<td><input type="number" value="0" min="0" style="width:100%;padding:4px 2px;text-align:center;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:inherit;background:#fff" oninput="calcW()"></td>`;
   tr.innerHTML=`
-    <td style="min-width:58px"><input type="text" value="${name}" placeholder="직종" style="width:100%;padding:4px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:#fff;font-family:inherit" onchange="if(!this.value.trim()){this.closest('tr').remove();calcW();}"></td>
-    ${ni('관리자')}${ni('근로자')}${ni('화기')}${ni('신호')}${ni('유도')}
-    <td><input type="number" value="${initCumul}" min="0" placeholder="누적" style="width:100%;padding:3px 1px;text-align:center;border:1.5px solid #374151;border-radius:3px;font-size:11px;background:#f4f5f7;font-family:inherit;font-weight:700;color:#374151" oninput="calcW()"></td>
-    <td style="font-weight:700;color:var(--orange);text-align:center;font-size:12px;white-space:nowrap" class="w-sub">0</td>
-    <td><input type="number" value="" min="0" max="100" placeholder="%" style="width:100%;padding:3px 1px;text-align:center;border:1.5px solid #065f46;border-radius:3px;font-size:11px;background:#f0faf5;font-family:inherit;font-weight:700;color:#065f46" class="w-pct-inp" oninput="calcW()"></td>
-    <td><button class="rm-btn" onclick="rmRow(this)" style="padding:3px 5px;font-size:11px">✕</button></td>`;
+    <td><input type="text" value="${name}" placeholder="직종" style="width:100%;padding:4px 3px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:#fff;font-family:inherit" onchange="if(!this.value.trim()){this.closest('tr').remove();calcW();}"></td>
+    ${ni()}${ni()}${ni()}${ni()}${ni()}
+    <td><input type="number" value="${initCumul}" min="0" style="width:100%;padding:4px 2px;text-align:center;border:1.5px solid #374151;border-radius:4px;font-size:12px;background:#f4f5f7;font-family:inherit;font-weight:700;color:#374151" oninput="calcW()"></td>
+    <td style="font-weight:700;color:var(--orange);text-align:center;font-size:12px" class="w-sub">0</td>
+    <td style="font-weight:700;color:#374151;text-align:center;font-size:12px" class="w-total">0</td>
+    <td><input type="number" value="" min="0" max="100" placeholder="%" style="width:100%;padding:4px 2px;text-align:center;border:1.5px solid #065f46;border-radius:4px;font-size:12px;background:#f0faf5;font-family:inherit;font-weight:700;color:#065f46" class="w-pct-inp" oninput="calcW()"></td>
+    <td><button class="rm-btn" onclick="rmRow(this)">✕</button></td>`;
   tbody.appendChild(tr); calcW();
 }
 
-function stepNum(btn, delta){
-  const inp = btn.parentElement.querySelector('input');
-  if(!inp) return;
-  const v = parseInt(inp.value)||0;
-  inp.value = Math.max(0, v+delta);
-  calcW();
-}
 function calcW(){
   const totals=Array(5).fill(0);
   let totalSub=0, totalCumul=0;
